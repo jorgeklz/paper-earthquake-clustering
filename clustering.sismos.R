@@ -78,8 +78,8 @@ dataset.earthquake=subset(dataset.earthquake, dataset.earthquake$Latitude>=-2)
 #################
 #Features selection
 #################
-minimo=1  #magnitud minima
-maximo=9  #magnitud maxima
+minimo=1  #min magnitude
+maximo=9  #max magnitude
 dataset.earthquake<-subset(dataset.earthquake, Mag>=minimo & Mag<maximo)
 #Feature selection: Magnitude and Depth
 dataset.features<-dataset.earthquake[,c("Mag","Depth", "Latitude", "Longitude", "CloserCity", "Region")]
