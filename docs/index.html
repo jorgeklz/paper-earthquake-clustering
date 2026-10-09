@@ -1,142 +1,183 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Réplicas de Pedernales 2016</title>
-<meta name="description" content="Visualización interactiva de las réplicas del terremoto Mw 7.8 de Ecuador (16 de abril de 2016) y de su agrupamiento geográfico con MST-kNN.">
+<title>Pedernales 2016 Aftershocks</title>
+<meta name="description" content="Interactive visualization of the aftershocks of the Mw 7.8 Ecuador earthquake (April 16, 2016) and their geographical clustering with MST-kNN. Universidad Técnica de Manabí.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap">
 <style>
 [hidden]{display:none!important}
-/* Layout: boletín sismológico. Barra de filtros arriba, mapa a la izquierda con panel de lectura, gráficos en rejilla debajo. */
+/* Sistema visual institucional UTM: sidebar fija con logo, contenido en tarjetas, paleta verde y amarillo. */
 :root{
-  --bg:#f3f5f6; --surface:#ffffff; --ink:#111a20; --ink-2:#44525c; --muted:#76838c; --line:#d6dde2;
-  --accent:#c42e1b; --accent-soft:#f6ddd7;
-  --ocean:#dfe8ee; --land:#fbfcfb; --land-alt:#eef1ef; --border:#aab6bf;
-  --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a; --c4:#eda100; --c5:#e87ba4; --c0:#9aa5ad;
-  --s1:#86b6ef; --s2:#3987e5; --s3:#256abf; --s4:#184f95; --s5:#0d366b;
-  --font-display:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --font-body:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --font-data:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:light;
+  --bg:#f7f8f5; --superficie:#ffffff; --superficie2:#f0f2ec; --borde:#e1e5db;
+  --texto:#17220f; --texto2:#55604a; --texto3:#98a18d;
+  --g1:#1e6b14; --g2:#2e8a1f; --g3:#4aab30; --g4:#72c255; --g6:#e2f2da;
+  --y3:#d4a80a; --y6:#fdf3cc; --y-tinta:#8a6500;
+  --rojo:#b3261e;
+  --r:12px;
+  --sombra:0 1px 3px rgba(20,40,10,.06),0 4px 18px rgba(20,40,10,.05);
+  --fs-micro:10.5px; --fs-xs:11.5px; --fs-sm:12.5px; --fs-md:13.5px; --fs-base:14px; --fs-lg:16px; --fs-xl:19px; --fs-2xl:22px; --fs-3xl:26px;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-titulo:"Playfair Display",Georgia,"Times New Roman",serif;
+
+  /* Clusters: institutional green and gold first; validated for color vision deficiency (all pairs). */
+  --c0:#a3ab98; --c1:#2e8a1f; --c2:#d4a80a; --c3:#2a78d6; --c4:#c2457e; --c5:#4a3aa7;
+  /* Sequential green ramp, low to high */
+  --s1:#a8d88f; --s2:#4aab30; --s3:#2e8a1f; --s4:#1e6b14; --s5:#0f3d0a;
+  /* Aliases used by the map and chart code */
+  --ink:var(--texto); --ink-2:var(--texto2); --muted:var(--texto3); --line:var(--borde); --accent:var(--rojo); --surface:var(--superficie);
+  --ocean:#e4ecee; --land:#ffffff; --land-alt:#eef0ea; --border:#c3cbbb;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0c1115; --surface:#151c22; --ink:#eef2f4; --ink-2:#b4c0c8; --muted:#83919b; --line:#2a353d;
-  --accent:#ff6a4d; --accent-soft:#3a1f1a;
-  --ocean:#0a1218; --land:#1b242b; --land-alt:#141b20; --border:#45535e;
-  --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c0:#5d6a73;
-  --s1:#184f95; --s2:#256abf; --s3:#3987e5; --s4:#6da7ec; --s5:#b7d3f6;
-  color-scheme:dark;
-}}
-:root[data-theme="dark"]{
-  --bg:#0c1115; --surface:#151c22; --ink:#eef2f4; --ink-2:#b4c0c8; --muted:#83919b; --line:#2a353d;
-  --accent:#ff6a4d; --accent-soft:#3a1f1a;
-  --ocean:#0a1218; --land:#1b242b; --land-alt:#141b20; --border:#45535e;
-  --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c0:#5d6a73;
-  --s1:#184f95; --s2:#256abf; --s3:#3987e5; --s4:#6da7ec; --s5:#b7d3f6;
-  color-scheme:dark;
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--texto)}
+body{font-family:var(--font);font-size:var(--fs-base);line-height:1.5}
+a{color:var(--g1);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font-family:inherit;cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---- estructura ---- */
+.app{display:flex;min-height:100%}
+.sidebar{width:240px;background:var(--superficie);border-right:1px solid var(--borde);position:fixed;top:0;bottom:0;display:flex;flex-direction:column;z-index:1200;overflow-y:auto;padding-top:env(safe-area-inset-top,0px)}
+.sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid var(--borde);display:grid;gap:12px}
+.sidebar-logo img{width:100%;max-width:190px;height:auto}
+.sidebar-logo h1{font-family:var(--font-titulo);font-size:var(--fs-lg);color:var(--g1);line-height:1.3}
+.sidebar-logo p{font-size:var(--fs-xs);color:var(--texto3);margin-top:3px}
+.seccion-nav{font-size:var(--fs-micro);font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--texto3);padding:16px 16px 6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;margin:1px 8px;border-radius:8px;font-size:var(--fs-md);color:var(--texto2);width:calc(100% - 16px);transition:all .13s}
+.nav-item:hover{background:var(--superficie2);color:var(--texto);text-decoration:none}
+.nav-item.activo{background:var(--g6);color:var(--g1);font-weight:600}
+.nav-item svg{flex:none}
+.sidebar-pie{margin-top:auto;padding:14px 16px;border-top:1px solid var(--borde);font-size:var(--fs-micro);color:var(--texto3);line-height:1.6}
+.contenido{margin-left:240px;flex:1;min-width:0;padding:26px 32px 48px;display:grid;gap:18px;align-content:start}
+.menu-toggle{display:none}
+.sidebar-overlay{display:none}
+@media (max-width:860px){
+  .app{flex-direction:column}
+  .contenido{margin-left:0;padding:18px;padding-top:60px}
+  .sidebar{transform:translateX(-100%);transition:transform .22s ease;width:260px;box-shadow:0 0 40px rgba(0,0,0,.18)}
+  .sidebar.abierto{transform:translateX(0)}
+  .menu-toggle{display:inline-flex;align-items:center;gap:7px;position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:10px;z-index:1100;background:var(--superficie);border:1px solid var(--borde);border-radius:9px;padding:8px 12px;font-size:var(--fs-md);font-weight:600;color:var(--texto);box-shadow:var(--sombra)}
+  .sidebar-overlay:not([hidden]){display:block;position:fixed;inset:0;background:rgba(20,30,12,.38);z-index:1150}
 }
-*{box-sizing:border-box}
-html,body{background:var(--bg);color:var(--ink)}
-body{margin:0;font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:clamp(16px,3vw,40px);padding-block:28px 48px}
-.wrap{max-width:1360px;margin-inline:auto;display:grid;gap:28px}
-h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.1}
-h1{font-size:clamp(28px,4.2vw,46px);font-weight:750;font-stretch:80%;letter-spacing:-.01em}
-h2{font-size:21px;font-weight:700;font-stretch:85%}
-h3{font-size:15px;font-weight:650}
-p{margin:0}
-.eyebrow{font-family:var(--font-data);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.eyebrow .tick{display:inline-block;width:22px;height:10px;background:linear-gradient(90deg,transparent 0 30%,var(--accent) 30% 36%,transparent 36% 52%,var(--accent) 52% 56%,transparent 56%)}
-.lede{max-width:68ch;color:var(--ink-2);font-size:16px}
-header{display:grid;gap:12px}
-.mono,.num{font-family:var(--font-data);font-variant-numeric:tabular-nums}
-.muted{color:var(--muted)}
 
-/* KPI line */
-.kpis{display:flex;flex-wrap:wrap;gap:8px 36px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding-block:12px}
-.kpi{display:grid;gap:0}
-.kpi b{font-family:var(--font-data);font-weight:500;font-size:22px;font-variant-numeric:tabular-nums}
-.kpi span{font-size:12px;color:var(--muted);letter-spacing:.03em}
+/* ---- componentes ---- */
+.franja{height:4px;border-radius:99px;background:linear-gradient(90deg,var(--g1) 0 62%,var(--y3) 62% 100%);width:120px}
+.titulo-pagina{font-size:var(--fs-2xl);font-weight:700;line-height:1.25;text-wrap:balance}
+.subtitulo-pagina{color:var(--texto2);font-size:var(--fs-md);max-width:78ch}
+.cabecera{display:grid;gap:8px}
+.antetitulo{font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--y-tinta)}
+.cuadricula{display:grid;gap:14px}
+.cuadricula>*{min-width:0}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.tarjeta{background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:18px;box-shadow:var(--sombra);min-width:0}
+.kpi-valor{font-size:var(--fs-3xl);font-weight:700;color:var(--g1);font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi-etiqueta{font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--texto3);margin-top:4px}
+.titulo-tarjeta{font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--texto3);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.texto-tarjeta{font-size:var(--fs-sm);color:var(--texto2);margin-bottom:10px;max-width:68ch}
+.fila-graficos{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:1000px){.fila-graficos{grid-template-columns:minmax(0,1fr)}}
+.titulo-seccion{font-size:var(--fs-xl);font-weight:700;scroll-margin-top:20px}
+.seccion{display:grid;gap:12px;scroll-margin-top:20px}
+.seccion>p{font-size:var(--fs-md);color:var(--texto2);max-width:80ch}
 
-/* Controls */
-.controls{display:flex;flex-wrap:wrap;gap:14px 26px;align-items:end}
-.ctl{display:grid;gap:6px;min-width:0}
-.ctl>label,.ctl>.lbl{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
-.seg button{all:unset;cursor:pointer;padding:6px 11px;font-size:13px;color:var(--ink-2);border-right:1px solid var(--line)}
-.seg button:last-child{border-right:0}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.seg button:focus-visible,.chip:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;border:1px solid var(--line);border-radius:999px;font-size:13px;background:var(--surface);color:var(--ink)}
-.chip i{width:10px;height:10px;border-radius:50%;background:var(--sw)}
-.chip[aria-pressed="false"]{color:var(--muted);background:transparent}
-.chip[aria-pressed="false"] i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--sw)}
-input[type=range]{accent-color:var(--accent);width:180px;max-width:100%}
-.rangeval{font-family:var(--font-data);font-size:13px;color:var(--ink)}
-.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;background:var(--accent);color:#fff;font-size:13px;font-weight:600}
-.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-.timebar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.timebar input{width:min(420px,70vw)}
+/* controles */
+.barra-controles{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:flex-end;background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:12px 14px}
+.control{display:grid;gap:5px;min-width:0}
+.control>label,.control>.etq{font-size:var(--fs-micro);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--texto3)}
+.grupo-botones{display:inline-flex;flex-wrap:wrap;gap:5px}
+.boton{padding:8px 16px;border-radius:8px;border:none;background:var(--g1);color:#fff;font-size:var(--fs-md);font-weight:600;transition:background .13s;display:inline-flex;align-items:center;gap:6px}
+.boton:hover{background:var(--g2)}
+.boton.secundario{background:var(--superficie2);color:var(--texto2);border:1px solid var(--borde)}
+.boton.secundario:hover{background:var(--g6);color:var(--g1)}
+.boton.pequeno{padding:5px 11px;font-size:var(--fs-sm)}
+.boton.secundario[aria-pressed="true"]{background:var(--g1);border-color:var(--g1);color:#fff}
+.insignia{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:var(--fs-xs);font-weight:600;white-space:nowrap}
+button.insignia{border:1px solid var(--borde);background:var(--superficie);color:var(--texto)}
+button.insignia i{width:9px;height:9px;border-radius:50%;background:var(--sw)}
+button.insignia[aria-pressed="false"]{background:var(--superficie2);color:var(--texto3)}
+button.insignia[aria-pressed="false"] i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--sw)}
+.insignia.q1{background:#e2f2da;color:#1e6b14}
+.insignia.q4{background:#f9e4e2;color:#a3322a}
+.insignia.oa{background:var(--y6);color:var(--y-tinta)}
+input[type=range]{accent-color:var(--g1);width:170px;max-width:100%}
+.valor-rango{font-size:var(--fs-sm);color:var(--texto);font-weight:600;font-variant-numeric:tabular-nums}
+.fila-rango{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fila-rango.ancha input{width:min(440px,62vw)}
 
-/* Map + side */
-.stage{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
-@media (max-width:960px){.stage{grid-template-columns:minmax(0,1fr)}}
-#map{height:clamp(420px,68vh,680px);border:1px solid var(--line);border-radius:8px;background:var(--ocean)}
-.side{display:grid;gap:18px;min-width:0}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:grid;gap:10px;min-width:0}
-.legend{display:grid;gap:6px;font-size:13px}
-.legend .row{display:flex;align-items:center;gap:8px}
-.legend i{width:11px;height:11px;border-radius:50%;flex:none}
-.ramp{height:10px;border-radius:2px;background:linear-gradient(90deg,var(--s1),var(--s2),var(--s3),var(--s4),var(--s5))}
-.ramp-lbl{display:flex;justify-content:space-between;font-family:var(--font-data);font-size:11px;color:var(--muted)}
-.sizes{display:flex;align-items:end;gap:14px;font-family:var(--font-data);font-size:11px;color:var(--muted)}
-.sizes div{display:grid;justify-items:center;gap:4px}
-.sizes span.dot{border-radius:50%;border:1.5px solid var(--ink-2)}
-dl.detail{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:13px}
-dl.detail dt{color:var(--muted)}
-dl.detail dd{margin:0;font-family:var(--font-data);font-variant-numeric:tabular-nums}
+/* mapa y panel lateral */
+.escenario{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+@media (max-width:1100px){.escenario{grid-template-columns:minmax(0,1fr)}}
+.tarjeta.mapa{padding:0;overflow:hidden}
+#map{height:clamp(420px,66vh,660px);background:var(--ocean)}
+.lateral{display:grid;gap:14px;min-width:0}
+.leyenda{display:grid;gap:7px;font-size:var(--fs-md)}
+.leyenda .fila{display:flex;align-items:center;gap:8px}
+.leyenda i{width:11px;height:11px;border-radius:50%;flex:none}
+.leyenda .n{margin-left:auto;color:var(--texto3);font-variant-numeric:tabular-nums}
+.rampa{height:10px;border-radius:99px;background:linear-gradient(90deg,var(--s1),var(--s2),var(--s3),var(--s4),var(--s5))}
+.rampa-etq{display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--texto3)}
+.tamanos{display:flex;align-items:flex-end;gap:14px;font-size:var(--fs-xs);color:var(--texto3);margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)}
+.tamanos div{display:grid;justify-items:center;gap:4px}
+.tamanos span.punto-m{border-radius:50%;border:1.5px solid var(--texto2)}
+dl.detalle{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:var(--fs-sm)}
+dl.detalle dt{color:var(--texto3)}
+dl.detalle dd{font-variant-numeric:tabular-nums;font-weight:500;min-width:0;overflow-wrap:anywhere}
 
-/* Charts */
-.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-@media (max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}}
-.chart{display:grid;gap:6px;min-width:0}
-.chart .sub{font-size:13px;color:var(--ink-2);max-width:60ch}
-.chart svg{width:100%;height:auto;display:block;overflow:visible}
-.chart svg text{fill:var(--muted);font-family:var(--font-data);font-size:11px}
-.chart svg .ann{fill:var(--ink);font-size:12px}
-.chart svg .grid line{stroke:var(--line);stroke-width:1}
-.chart svg .axis{stroke:var(--border);stroke-width:1}
+/* gráficos */
+.grafico svg{width:100%;height:auto;display:block;overflow:visible}
+.grafico svg text{fill:var(--texto3);font-family:var(--font);font-size:11px}
+.grafico svg .ann{fill:var(--texto);font-size:12px;font-weight:600}
+.grafico svg .grid line{stroke:var(--borde);stroke-width:1}
+.grafico svg .axis{stroke:var(--border);stroke-width:1}
 
-/* Tables */
-.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{padding:8px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
-th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface)}
-td{font-family:var(--font-data);font-variant-numeric:tabular-nums}
-th:first-child,td:first-child{text-align:left}
-tr:last-child td{border-bottom:0}
-.sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:-1px}
-.pill{display:inline-block;font-family:var(--font-body);font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
-.pill.warn{color:var(--accent)}
-.pill.ok{color:var(--ink-2)}
+/* tablas */
+.tabla-contenedor{overflow-x:auto}
+.tabla{width:100%;border-collapse:collapse;font-size:var(--fs-md)}
+.tabla th{text-align:left;padding:9px 10px;font-size:var(--fs-micro);text-transform:uppercase;letter-spacing:.06em;color:var(--texto3);border-bottom:2px solid var(--borde);white-space:nowrap;font-weight:600}
+.tabla td{padding:9px 10px;border-bottom:1px solid var(--borde);white-space:nowrap}
+.tabla tr:last-child td{border-bottom:0}
+.tabla tr:hover td{background:var(--superficie2)}
+.tabla .num{text-align:right;font-variant-numeric:tabular-nums;width:1%}
+.tabla th.num{text-align:right}
+.mancha{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:-1px}
 
-section{display:grid;gap:14px}
-.sechead{display:grid;gap:4px}
-.dbctl{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:end}
-.stats{display:flex;flex-wrap:wrap;gap:8px 28px}
-.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
-.note{border-top:2px solid var(--ink);padding-top:10px;display:grid;gap:6px;font-size:14px;color:var(--ink-2)}
-.note h3{color:var(--ink)}
-footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:grid;gap:4px}
-footer a{color:var(--ink-2)}
+.hallazgos{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.hallazgos .tarjeta{display:grid;gap:8px;align-content:start;border-top:3px solid var(--g2)}
+.hallazgos .tarjeta:nth-child(even){border-top-color:var(--y3)}
+.hallazgos h3{font-size:var(--fs-lg);font-weight:600;color:var(--texto)}
+.hallazgos p{font-size:var(--fs-md);color:var(--texto2)}
+code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:.92em;background:var(--superficie2);padding:1px 5px;border-radius:4px}
+.pie{font-size:var(--fs-xs);color:var(--texto3);border-top:1px solid var(--borde);padding-top:14px;display:grid;gap:4px}
 
-/* Floating tooltip for SVG charts */
-#tip{position:fixed;pointer-events:none;z-index:1000;background:var(--ink);color:var(--bg);font-size:12px;line-height:1.4;padding:6px 9px;border-radius:5px;max-width:260px;font-family:var(--font-data)}
+.ir-arriba{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:1000;display:inline-flex;align-items:center;gap:6px;padding:10px 15px;border-radius:99px;border:1px solid var(--borde);background:var(--superficie);color:var(--texto2);font-size:var(--fs-md);font-weight:600;box-shadow:0 4px 16px rgba(20,40,10,.16)}
+.ir-arriba:hover{border-color:var(--g4);color:var(--g1);text-decoration:none}
 
-/* Leaflet 1.9.4 (BSD-2-Clause), estilos esenciales en línea */
+a:focus-visible,button:focus-visible,input:focus-visible,.nav-item:focus-visible{outline:2px solid var(--g2);outline-offset:2px;border-radius:6px}
+
+#tip{position:fixed;pointer-events:none;z-index:2000;background:var(--texto);color:#fff;font-size:var(--fs-sm);line-height:1.45;padding:7px 10px;border-radius:8px;max-width:260px;box-shadow:0 6px 20px rgba(20,40,10,.16)}
+
+@media (max-width:640px){
+  .kpis{grid-template-columns:repeat(2,1fr);gap:10px}
+  .kpi-valor{font-size:var(--fs-2xl)}
+  .kpi-etiqueta{font-size:var(--fs-micro)}
+  .titulo-pagina{font-size:var(--fs-xl)}
+  .subtitulo-pagina{font-size:var(--fs-sm)}
+  .tarjeta{padding:14px}
+  .fila-graficos{grid-template-columns:1fr}
+  .barra-controles{padding:12px;gap:12px}
+  .ir-arriba{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));padding:9px 14px}
+  .grafico svg text{font-size:13px}
+  .grafico svg .ann{font-size:13px}
+}
+@media (max-width:380px){.kpis{grid-template-columns:1fr}}
+
+/* Leaflet 1.9.4 (BSD-2-Clause), essential styles inlined */
 .leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
-.leaflet-container{overflow:hidden;-webkit-tap-highlight-color:transparent;font-family:var(--font-body);font-size:12px;outline-offset:1px}
+.leaflet-container{overflow:hidden;-webkit-tap-highlight-color:transparent;font-family:var(--font);font-size:12px;outline-offset:1px}
 .leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}
 .leaflet-container.leaflet-touch-zoom{touch-action:pan-x pan-y}
 .leaflet-container.leaflet-touch-drag{touch-action:none;touch-action:pinch-zoom}
@@ -148,121 +189,148 @@ footer a{color:var(--ink-2)}
 .leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
 .leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}
 .leaflet-right .leaflet-control{float:right}.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}
-.leaflet-fade-anim .leaflet-popup{opacity:0;transition:opacity .2s linear}
-.leaflet-fade-anim .leaflet-map-pane .leaflet-popup{opacity:1}
 .leaflet-zoom-animated{transform-origin:0 0}
 .leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
-.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{transition:none}
 .leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}
 .leaflet-interactive{cursor:pointer}
 .leaflet-grab{cursor:grab}
-.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive,.leaflet-dragging .leaflet-marker-draggable{cursor:move;cursor:grabbing}
-.leaflet-bar{border-radius:6px;border:1px solid var(--line);background:var(--surface)}
-.leaflet-bar a{display:block;width:30px;height:30px;line-height:30px;text-align:center;text-decoration:none;color:var(--ink);font:600 17px/30px var(--font-body);border-bottom:1px solid var(--line)}
+.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive{cursor:move;cursor:grabbing}
+.leaflet-bar{border-radius:8px;border:1px solid var(--borde);background:var(--superficie);box-shadow:var(--sombra);overflow:hidden}
+.leaflet-bar a{display:block;width:32px;height:32px;text-align:center;text-decoration:none;color:var(--g1);font:600 18px/32px var(--font);border-bottom:1px solid var(--borde)}
+.leaflet-bar a:hover{background:var(--g6);text-decoration:none}
 .leaflet-bar a:last-child{border-bottom:0}
-.leaflet-bar a.leaflet-disabled{color:var(--muted);cursor:default}
-.leaflet-control-scale-line{border:1.5px solid var(--ink-2);border-top:0;padding:0 5px;font:11px var(--font-data);color:var(--ink-2);background:var(--surface);white-space:nowrap}
-.leaflet-control-attribution{background:var(--surface);color:var(--muted);padding:0 6px;font-size:10px;margin:0!important}
-.leaflet-control-attribution a{color:var(--ink-2)}
-.leaflet-tooltip{position:absolute;padding:5px 8px;background:var(--ink);color:var(--bg);border-radius:5px;white-space:nowrap;pointer-events:none;font-family:var(--font-data);font-size:11.5px;line-height:1.4}
-.leaflet-tooltip.place{background:transparent;color:var(--ink-2);padding:0;font-family:var(--font-body);font-size:11px;font-weight:600;text-shadow:0 0 3px var(--land),0 0 3px var(--land)}
-.cl-label{font:700 12px var(--font-data);color:var(--ink);background:var(--surface);border:1.5px solid var(--ink);border-radius:4px;padding:0 4px;white-space:nowrap;transform:translate(-50%,-50%);display:inline-block}
+.leaflet-bar a.leaflet-disabled{color:var(--texto3);cursor:default;background:var(--superficie)}
+.leaflet-control-scale-line{border:1.5px solid var(--texto2);border-top:0;padding:0 5px;font:11px var(--font);color:var(--texto2);background:rgba(255,255,255,.85);white-space:nowrap}
+.leaflet-control-attribution{background:rgba(255,255,255,.85);color:var(--texto3);padding:0 6px;font-size:10px;margin:0!important}
+.leaflet-tooltip{position:absolute;padding:6px 9px;background:var(--texto);color:#fff;border-radius:8px;white-space:nowrap;pointer-events:none;font-family:var(--font);font-size:12px;line-height:1.4}
+.leaflet-tooltip.lugar{background:transparent;color:var(--texto2);padding:0;font-size:11px;font-weight:600;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff}
+.etq-grupo{font:700 12px var(--font);color:var(--texto);background:var(--superficie);border:1.5px solid var(--texto);border-radius:6px;padding:0 5px;white-space:nowrap;transform:translate(-50%,-50%);display:inline-block}
 .epi svg{display:block}
-@media (prefers-reduced-motion:reduce){.leaflet-zoom-anim .leaflet-zoom-animated{transition:none}}
+@media (prefers-reduced-motion:reduce){.leaflet-zoom-anim .leaflet-zoom-animated,.sidebar,.nav-item{transition:none}}
 </style>
 
-<div class="wrap">
-  <header>
-    <div class="eyebrow"><span class="tick" aria-hidden="true"></span><span>Mw 7.8 · 16 abr 2016 · 18:58 hora local · prof. ≈ 21 km</span></div>
-    <h1>Réplicas del terremoto de Pedernales</h1>
-    <p class="lede">Catálogo del Instituto Geofísico (IG-EPN) entre abril de 2016 y mayo de 2018, con los grupos geográficos que encontró MST-kNN sobre distancias de Haversine. Filtra por magnitud, profundidad o tiempo, reproduce la secuencia día a día y compara contra DBSCAN.</p>
-    <div class="kpis" id="kpis" aria-live="polite"></div>
-  </header>
+<div class="app">
+  <button type="button" class="menu-toggle" id="menu" aria-expanded="false" aria-controls="sidebar">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Menu</button>
+  <div class="sidebar-overlay" id="overlay" hidden></div>
 
-  <div class="controls" role="group" aria-label="Filtros">
-    <div class="ctl"><span class="lbl">Eventos</span>
-      <div class="seg" id="scope">
-        <button type="button" data-v="study" aria-pressed="true">Área de estudio</button>
-        <button type="button" data-v="all" aria-pressed="false">Catálogo completo</button>
-      </div></div>
-    <div class="ctl"><span class="lbl">Color por</span>
-      <div class="seg" id="colorby">
-        <button type="button" data-v="cluster" aria-pressed="true">MST-kNN</button>
-        <button type="button" data-v="dbscan" aria-pressed="false">DBSCAN</button>
-        <button type="button" data-v="depth" aria-pressed="false">Profundidad</button>
-        <button type="button" data-v="time" aria-pressed="false">Tiempo</button>
-      </div></div>
-    <div class="ctl"><span class="lbl">Grupos MST-kNN</span><div class="chips" id="chips"></div></div>
-    <div class="ctl"><label for="magmin">Magnitud mínima</label>
-      <div class="timebar"><input id="magmin" type="range" min="2" max="6" step="0.1" value="2"><span class="rangeval" id="magminv"></span></div></div>
-    <div class="ctl"><label for="depmax">Profundidad máxima</label>
-      <div class="timebar"><input id="depmax" type="range" min="5" max="200" step="5" value="200"><span class="rangeval" id="depmaxv"></span></div></div>
-  </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img src="logo-utm.png" alt="Universidad Técnica de Manabí, founded in 1952" width="483" height="189">
+      <div><h1>Aftershocks of the Pedernales Earthquake</h1><p>Geographical clustering with MST-kNN</p></div>
+    </div>
+    <div class="seccion-nav">Sections</div>
+    <nav id="nav">
+      <a class="nav-item activo" href="#map-view"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.5l4-1.5 5 1.5 4-1.5v10.5l-4 1.5-5-1.5-4 1.5z M5.5 2v10.5 M10.5 3.5V14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Map</a>
+      <a class="nav-item" href="#clusters"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5" cy="5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="7" cy="11.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Cluster summary</a>
+      <a class="nav-item" href="#dynamics"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8h3l2-5 3 10 2-5h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>Sequence dynamics</a>
+      <a class="nav-item" href="#dbscan"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.5 2"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/></svg>DBSCAN comparison</a>
+      <a class="nav-item" href="#findings"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a4.5 4.5 0 00-2.5 8.2V12h5V9.7A4.5 4.5 0 008 1.5zM6 14h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Findings</a>
+    </nav>
+    <div class="sidebar-pie">
+      J. Párraga-Álava, G. Molina, R. Alcívar and M. Inostroza-Ponta.<br>
+      Data: IG-EPN, April 2016 to May 2018.<br>
+      <a href="https://github.com/jorgeklz/paper-earthquake-clustering">Code on GitHub</a>
+    </div>
+  </aside>
 
-  <div class="ctl"><label for="time">Tiempo desde el sismo principal</label>
-    <div class="timebar">
-      <button type="button" class="btn" id="play" aria-label="Reproducir secuencia">▶ Reproducir</button>
-      <input id="time" type="range" min="0" max="1000" step="1" value="1000">
-      <span class="rangeval" id="timev"></span>
-    </div></div>
+  <main class="contenido" id="top">
+    <header class="cabecera">
+      <div class="franja" aria-hidden="true"></div>
+      <span class="antetitulo">Mw 7.8 · April 16, 2016 · 18:58 local time · depth ≈ 21 km</span>
+      <h2 class="titulo-pagina">Aftershocks of the Pedernales earthquake and their geographical clustering</h2>
+      <p class="subtitulo-pagina">Catalog from the Geophysical Institute (IG-EPN) with the clusters found by MST-kNN on Haversine distances. Filter by magnitude, depth or cluster, replay the sequence day by day and compare the result with DBSCAN.</p>
+    </header>
 
-  <div class="stage">
-    <div id="map" role="region" aria-label="Mapa de réplicas"></div>
-    <aside class="side">
-      <div class="panel">
-        <h3 id="legtitle">Grupos MST-kNN</h3>
-        <div class="legend" id="legend"></div>
-        <div class="sizes" id="sizes" aria-label="Tamaño según magnitud"></div>
+    <div class="cuadricula kpis" id="kpis" aria-live="polite"></div>
+
+    <div class="barra-controles" role="group" aria-label="Filters">
+      <div class="control"><span class="etq">Events</span>
+        <div class="grupo-botones" id="scope">
+          <button type="button" class="boton secundario pequeno" data-v="study" aria-pressed="true">Study area</button>
+          <button type="button" class="boton secundario pequeno" data-v="all" aria-pressed="false">Full catalog</button>
+        </div></div>
+      <div class="control"><span class="etq">Color by</span>
+        <div class="grupo-botones" id="colorby">
+          <button type="button" class="boton secundario pequeno" data-v="cluster" aria-pressed="true">MST-kNN</button>
+          <button type="button" class="boton secundario pequeno" data-v="dbscan" aria-pressed="false">DBSCAN</button>
+          <button type="button" class="boton secundario pequeno" data-v="depth" aria-pressed="false">Depth</button>
+          <button type="button" class="boton secundario pequeno" data-v="time" aria-pressed="false">Time</button>
+        </div></div>
+      <div class="control"><span class="etq">MST-kNN clusters</span><div class="grupo-botones" id="chips"></div></div>
+      <div class="control"><label for="magmin">Minimum magnitude</label>
+        <div class="fila-rango"><input id="magmin" type="range" min="2" max="6" step="0.1" value="2"><span class="valor-rango" id="magminv"></span></div></div>
+      <div class="control"><label for="depmax">Maximum depth</label>
+        <div class="fila-rango"><input id="depmax" type="range" min="5" max="200" step="5" value="200"><span class="valor-rango" id="depmaxv"></span></div></div>
+      <div class="control"><label for="time">Time since the mainshock</label>
+        <div class="fila-rango ancha">
+          <button type="button" class="boton pequeno" id="play" aria-label="Play sequence">▶ Play</button>
+          <input id="time" type="range" min="0" max="1000" step="1" value="1000">
+          <span class="valor-rango" id="timev"></span>
+        </div></div>
+    </div>
+
+    <section class="seccion" id="map-view" aria-labelledby="t-map">
+      <h2 class="titulo-seccion" id="t-map">Aftershock map</h2>
+      <div class="escenario">
+        <div class="tarjeta mapa"><div id="map" role="region" aria-label="Aftershock map"></div></div>
+        <div class="lateral">
+          <div class="tarjeta">
+            <div class="titulo-tarjeta" id="legtitle">MST-kNN clusters</div>
+            <div class="leyenda" id="legend"></div>
+            <div class="tamanos" id="sizes" aria-label="Size by magnitude"></div>
+          </div>
+          <div class="tarjeta" id="detail">
+            <div class="titulo-tarjeta">Selected event</div>
+            <p class="texto-tarjeta" style="margin:0">Tap a circle on the map to see its date, magnitude, depth and cluster.</p>
+          </div>
+        </div>
       </div>
-      <div class="panel" id="detail">
-        <h3>Evento seleccionado</h3>
-        <p class="muted" style="font-size:13px">Toca un círculo del mapa para ver su fecha, magnitud, profundidad y grupo.</p>
+    </section>
+
+    <section class="seccion" id="clusters" aria-labelledby="t-clusters">
+      <h2 class="titulo-seccion" id="t-clusters">Cluster summary</h2>
+      <p>The silhouette is computed with the Haversine distance on the filtered events. Values close to 0 or negative indicate clusters that overlap with a neighbor.</p>
+      <div class="tarjeta"><div class="tabla-contenedor"><table class="tabla" id="cltable"></table></div></div>
+    </section>
+
+    <section class="seccion" id="dynamics" aria-labelledby="t-dyn">
+      <h2 class="titulo-seccion" id="t-dyn">Sequence dynamics</h2>
+      <div class="cuadricula fila-graficos">
+        <div class="tarjeta grafico"><div class="titulo-tarjeta">Omori decay</div><p class="texto-tarjeta" id="omorisub"></p><svg id="omori" viewBox="0 0 560 320" role="img" aria-label="Event rate per day versus days since the mainshock, log-log scale"></svg></div>
+        <div class="tarjeta grafico"><div class="titulo-tarjeta">Gutenberg-Richter</div><p class="texto-tarjeta" id="grsub"></p><svg id="gr" viewBox="0 0 560 320" role="img" aria-label="Cumulative number of events with magnitude greater than or equal to M"></svg></div>
+        <div class="tarjeta grafico"><div class="titulo-tarjeta">Latitude and depth profile</div><p class="texto-tarjeta">Subduction of the Nazca plate concentrates the activity in the first 25 km. The red dotted line marks 10 km, the depth the catalog assigns by default when it could not be estimated.</p><svg id="xsec" viewBox="0 0 560 320" role="img" aria-label="Depth versus latitude"></svg></div>
+        <div class="tarjeta grafico"><div class="titulo-tarjeta">Magnitude over time</div><p class="texto-tarjeta">The horizontal axis uses a logarithmic scale of days, so the first week is not compressed.</p><svg id="mt" viewBox="0 0 560 320" role="img" aria-label="Magnitude versus days since the mainshock"></svg></div>
       </div>
-    </aside>
-  </div>
+    </section>
 
-  <section>
-    <div class="sechead"><h2>Resumen de grupos</h2>
-      <p class="sub muted" style="font-size:14px;max-width:70ch">Silueta calculada con la distancia de Haversine sobre los eventos filtrados. Valores cercanos a 0 o negativos indican grupos que se solapan con un vecino.</p></div>
-    <div class="tablewrap"><table id="cltable"></table></div>
-  </section>
+    <section class="seccion" id="dbscan" aria-labelledby="t-db">
+      <h2 class="titulo-seccion" id="t-db">Comparison with DBSCAN</h2>
+      <p>DBSCAN runs in your browser on the same filtered events, with the Haversine distance. The adjusted Rand index (ARI) measures how closely it matches the MST-kNN partition: 1 is identical and 0 is what chance would give. Noise points count as a separate cluster.</p>
+      <div class="barra-controles">
+        <div class="control"><label for="eps">Radius ε</label><div class="fila-rango"><input id="eps" type="range" min="3" max="40" step="1" value="12"><span class="valor-rango" id="epsv"></span></div></div>
+        <div class="control"><label for="minpts">Minimum neighbors</label><div class="fila-rango"><input id="minpts" type="range" min="3" max="30" step="1" value="8"><span class="valor-rango" id="minptsv"></span></div></div>
+        <button type="button" class="boton secundario" id="showdb">Show DBSCAN on the map</button>
+      </div>
+      <div class="cuadricula kpis" id="dbstats"></div>
+    </section>
 
-  <section>
-    <div class="sechead"><h2>Dinámica de la secuencia</h2></div>
-    <div class="grid2">
-      <div class="chart"><h3>Decaimiento de Omori</h3><p class="sub" id="omorisub"></p><svg id="omori" viewBox="0 0 560 320" role="img" aria-label="Tasa de eventos por día frente a días desde el sismo principal, escala log-log"></svg></div>
-      <div class="chart"><h3>Gutenberg-Richter</h3><p class="sub" id="grsub"></p><svg id="gr" viewBox="0 0 560 320" role="img" aria-label="Número acumulado de eventos con magnitud mayor o igual a M"></svg></div>
-      <div class="chart"><h3>Perfil latitud y profundidad</h3><p class="sub">Cada punto es un evento. La subducción de la placa de Nazca concentra la actividad en los primeros 25 km. La línea punteada marca 10 km, la profundidad que el catálogo asigna por defecto cuando no se pudo estimar.</p><svg id="xsec" viewBox="0 0 560 320" role="img" aria-label="Profundidad frente a latitud"></svg></div>
-      <div class="chart"><h3>Magnitud en el tiempo</h3><p class="sub">Eje horizontal en escala logarítmica de días, para que la primera semana no quede comprimida.</p><svg id="mt" viewBox="0 0 560 320" role="img" aria-label="Magnitud frente a días desde el sismo principal"></svg></div>
-    </div>
-  </section>
+    <section class="seccion" id="findings" aria-labelledby="t-find">
+      <h2 class="titulo-seccion" id="t-find">What the data show</h2>
+      <div class="cuadricula hallazgos">
+        <div class="tarjeta"><h3>The catalog starts late</h3><p>The first record is from April 16 at 23:47 local time, almost five hours after the mainshock. The most numerous aftershocks of those hours are missing, and that biases Omori and Gutenberg-Richter.</p></div>
+        <div class="tarjeta"><h3>April has no nearest city</h3><p>385 of the 391 events from April 2016 carry <code>nas</code> as the nearest city. The original script drops them before the centrality analysis, right in the most active period.</p></div>
+        <div class="tarjeta"><h3>Fixed depth of 10 km</h3><p>266 events have exactly 10 km, the default value of the network. They should be flagged or excluded in any analysis that relies on depth.</p></div>
+        <div class="tarjeta"><h3>Two weak clusters</h3><p>Cluster 3 has a silhouette close to zero and cluster 5 is negative. They look more like fragments of their neighbors than like seismic zones of their own.</p></div>
+      </div>
+    </section>
 
-  <section>
-    <div class="sechead"><h2>Comparación con DBSCAN</h2>
-      <p class="muted" style="font-size:14px;max-width:72ch">DBSCAN corre en tu navegador sobre los mismos eventos filtrados, con distancia de Haversine. El índice de Rand ajustado (ARI) mide cuánto coincide con la partición MST-kNN: 1 es idéntica, 0 es lo esperado al azar. Los puntos de ruido cuentan como un grupo aparte.</p></div>
-    <div class="dbctl">
-      <div class="ctl"><label for="eps">Radio ε</label><div class="timebar"><input id="eps" type="range" min="3" max="40" step="1" value="12"><span class="rangeval" id="epsv"></span></div></div>
-      <div class="ctl"><label for="minpts">Vecinos mínimos</label><div class="timebar"><input id="minpts" type="range" min="3" max="30" step="1" value="8"><span class="rangeval" id="minptsv"></span></div></div>
-      <button type="button" class="btn ghost" id="showdb">Ver DBSCAN en el mapa</button>
-    </div>
-    <div class="stats kpis" id="dbstats"></div>
-  </section>
-
-  <section>
-    <div class="sechead"><h2>Lo que muestran los datos</h2></div>
-    <div class="notes">
-      <div class="note"><h3>El catálogo empieza tarde</h3><p>El primer registro es del 16 de abril a las 23:47 hora local, casi cinco horas después del sismo principal. Las réplicas más numerosas de esas horas no están, y eso sesga Omori y Gutenberg-Richter.</p></div>
-      <div class="note"><h3>Abril no tiene ciudad cercana</h3><p>385 de los 391 eventos de abril de 2016 traen <span class="mono">nas</span> en la ciudad más cercana. El script original los descarta antes del análisis de centralidad, justo en el periodo más activo.</p></div>
-      <div class="note"><h3>Profundidad fija de 10 km</h3><p>266 eventos tienen exactamente 10 km, el valor por defecto de la red. Conviene marcarlos o excluirlos en cualquier análisis que use la profundidad.</p></div>
-      <div class="note"><h3>Dos grupos débiles</h3><p>El grupo 3 tiene silueta cercana a cero y el 5 es negativo. Se parecen más a fragmentos de sus vecinos que a zonas sísmicas propias.</p></div>
-    </div>
-  </section>
-
-  <footer>
-    <p>Datos: Instituto Geofísico de la Escuela Politécnica Nacional (sismos.csv). Agrupamiento: Párraga-Álava, Molina, Alcívar e Inostroza-Ponta, MST-kNN (clustering.results.table.csv).</p>
-    <p>Mapa base: provincias de geoBoundaries (CC BY 4.0) y países vecinos de Natural Earth. Epicentro según USGS (0.382° N, 79.922° O).</p>
-  </footer>
+    <footer class="pie">
+      <p>Jorge Parraga-Alava, Ph.D · <a href="https://doi.org/10.1109/SCCC.2018.8705248">https://doi.org/10.1109/SCCC.2018.8705248</a></p>
+    </footer>
+  </main>
 </div>
+<a class="ir-arriba" href="#top" id="arriba" hidden aria-label="Back to top">↑ Top</a>
 <div id="tip" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -277,17 +345,17 @@ const EV=D.events.map(a=>({t:(a[0]-MS.tmin)/1440,tmin:a[0],mag:a[1],depth:a[2],l
 const MAXDAY=Math.ceil(Math.max(...EV.map(e=>e.t)));
 const NCL=5;
 const state={scope:"study",color:"cluster",clusters:new Set([1,2,3,4,5,0]),magMin:2,depMax:200,s:1000,eps:12,minpts:8,sel:null};
-const fmt=(v,d=1)=>v==null||!isFinite(v)?"—":v.toLocaleString("es-EC",{minimumFractionDigits:d,maximumFractionDigits:d});
-const MONTHS=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const fmt=(v,d=1)=>v==null||!isFinite(v)?"—":v.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const dateStr=(tmin,withTime)=>{const d=new Date((tmin-300)*60000);const s=`${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;return withTime?`${s}, ${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")}`:s};
 const dayFromS=s=>Math.expm1(s/1000*Math.log1p(MAXDAY));
-const dayLabel=d=>d<1?`${fmt(d*24,0)} h`:d<60?`${fmt(d,d<10?1:0)} días`:`${fmt(d/30.44,0)} meses`;
+const dayLabel=d=>d<1?`${fmt(d*24,0)} h`:d<60?`${fmt(d,d<10?1:0)} days`:`${fmt(d/30.44,0)} months`;
 
 /* ---------- colors from tokens ---------- */
 let C={};
 function readColors(){const cs=getComputedStyle(document.documentElement);const g=n=>cs.getPropertyValue(n).trim();
   C={cl:[g("--c0"),g("--c1"),g("--c2"),g("--c3"),g("--c4"),g("--c5")],seq:[g("--s1"),g("--s2"),g("--s3"),g("--s4"),g("--s5")],
-     ink:g("--ink"),ink2:g("--ink-2"),muted:g("--muted"),line:g("--line"),accent:g("--accent"),surface:g("--surface"),land:g("--land"),landAlt:g("--land-alt"),border:g("--border"),ocean:g("--ocean")};}
+     ink:g("--texto"),ink2:g("--texto2"),muted:g("--texto3"),line:g("--borde"),accent:g("--rojo"),gold:g("--y-tinta"),green:g("--g2"),surface:g("--superficie"),land:g("--land"),landAlt:g("--land-alt"),border:g("--border")};}
 readColors();
 function hex2rgb(h){h=h.replace("#","");return[0,2,4].map(i=>parseInt(h.substr(i,2),16))}
 function seqColor(u){u=Math.max(0,Math.min(1,u));const n=C.seq.length-1,i=Math.min(n-1,Math.floor(u*n)),f=u*n-i;const a=hex2rgb(C.seq[i]),b=hex2rgb(C.seq[i+1]);return`rgb(${a.map((v,k)=>Math.round(v+(b[k]-v)*f)).join(",")})`}
@@ -302,7 +370,7 @@ function colorOf(e){
 }
 const radius=m=>1.6+Math.pow(Math.max(m-2,0),1.55)*1.25;
 
-/* ---------- filtering ---------- */
+/* ---------- filters ---------- */
 function filtered(){const day=dayFromS(state.s);
   return EV.filter(e=>(state.scope==="all"||e.cl!=null)&&e.mag>=state.magMin-1e-9&&(state.depMax>=200||(e.depth!=null&&e.depth<=state.depMax))&&e.t<=day+1e-9&&state.clusters.has(e.cl||0));}
 
@@ -335,150 +403,154 @@ const map=L.map("map",{preferCanvas:true,zoomSnap:0.25,attributionControl:true,m
 map.attributionControl.setPrefix(false).addAttribution("geoBoundaries · Natural Earth · IG-EPN");
 L.control.scale({imperial:false,position:"bottomleft"}).addTo(map);
 const canvas=L.canvas({padding:0.3});
-let baseLayer=null;
-function drawBase(){if(baseLayer)baseLayer.remove();baseLayer=L.geoJSON(window.BASEMAP,{interactive:false,renderer:L.svg(),style:f=>({color:C.border,weight:f.properties.kind==="province"?0.7:1,fillColor:f.properties.kind==="province"?C.land:C.landAlt,fillOpacity:1})}).addTo(map);baseLayer.bringToBack()}
-drawBase();
+L.geoJSON(window.BASEMAP,{interactive:false,renderer:L.svg(),style:f=>({color:C.border,weight:f.properties.kind==="province"?0.7:1,fillColor:f.properties.kind==="province"?C.land:C.landAlt,fillOpacity:1})}).addTo(map).bringToBack();
 const PLACES=[["Esmeraldas",0.968,-79.652],["Muisne",0.611,-80.019],["Pedernales",0.071,-80.052],["Jama",-0.200,-80.267],["Bahía de Caráquez",-0.598,-80.424],["Manta",-0.967,-80.709],["Portoviejo",-1.055,-80.454],["Puerto López",-1.559,-80.811],["Quito",-0.180,-78.467],["Guayaquil",-2.170,-79.922],["Santo Domingo",-0.253,-79.172]];
-const placeLayer=L.layerGroup().addTo(map);
-PLACES.forEach(([n,la,lo])=>{L.circleMarker([la,lo],{radius:2.5,color:"transparent",fillColor:"#000",fillOpacity:0,interactive:false,renderer:L.svg()}).bindTooltip(n,{permanent:true,direction:"right",className:"place",offset:[4,0]}).addTo(placeLayer)});
-const epiIcon=()=>L.divIcon({className:"epi",iconSize:[26,26],iconAnchor:[13,13],html:`<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 1.5l3.1 7.4 8 .6-6.1 5.2 1.9 7.8L13 18.3l-6.9 4.2 1.9-7.8L1.9 9.5l8-.6z" fill="${C.accent}" stroke="${C.surface}" stroke-width="1.6"/></svg>`});
-const epi=L.marker([MS.lat,MS.lon],{icon:epiIcon(),zIndexOffset:1000,keyboard:false}).bindTooltip(`Sismo principal · Mw 7.8<br>16 abr 2016, 18:58 · ${fmt(MS.depth)} km`,{direction:"top",offset:[0,-10]}).addTo(map);
-let eventLayer=L.layerGroup().addTo(map), labelLayer=L.layerGroup().addTo(map);
+PLACES.forEach(([n,la,lo])=>{L.circleMarker([la,lo],{radius:2.5,color:"transparent",fillOpacity:0,interactive:false,renderer:L.svg()}).bindTooltip(n,{permanent:true,direction:"right",className:"lugar",offset:[4,0]}).addTo(map)});
+const epiIcon=L.divIcon({className:"epi",iconSize:[26,26],iconAnchor:[13,13],html:`<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 1.5l3.1 7.4 8 .6-6.1 5.2 1.9 7.8L13 18.3l-6.9 4.2 1.9-7.8L1.9 9.5l8-.6z" fill="${C.accent}" stroke="#fff" stroke-width="1.6"/></svg>`});
+L.marker([MS.lat,MS.lon],{icon:epiIcon,zIndexOffset:1000,keyboard:false}).bindTooltip(`Mainshock · Mw 7.8<br>16 Apr 2016, 18:58 · ${fmt(MS.depth)} km`,{direction:"top",offset:[0,-10]}).addTo(map);
+const eventLayer=L.layerGroup().addTo(map), labelLayer=L.layerGroup().addTo(map);
 
 function drawMap(ev){eventLayer.clearLayers();labelLayer.clearLayers();const day=dayFromS(state.s),playing=state.s<1000;
-  const sorted=[...ev].sort((a,b)=>b.mag-a.mag);
-  for(const e of sorted){const recent=playing&&day-e.t<=Math.max(1,day*0.08);
-    const m=L.circleMarker([e.lat,e.lon],{renderer:canvas,radius:radius(e.mag),color:recent?C.ink:C.surface,weight:recent?1.4:0.8,fillColor:colorOf(e),fillOpacity:playing&&!recent?0.45:0.82});
-    m.bindTooltip(`M ${fmt(e.mag)} · ${e.depth==null?"sin prof.":fmt(e.depth)+" km"}<br>${dateStr(e.tmin,true)}`,{direction:"top",offset:[0,-4]});
+  for(const e of [...ev].sort((a,b)=>b.mag-a.mag)){const recent=playing&&day-e.t<=Math.max(1,day*0.08);
+    const m=L.circleMarker([e.lat,e.lon],{renderer:canvas,radius:radius(e.mag),color:recent?C.ink:"#fff",weight:recent?1.4:0.8,fillColor:colorOf(e),fillOpacity:playing&&!recent?0.45:0.85});
+    m.bindTooltip(`M ${fmt(e.mag)} · ${e.depth==null?"no depth":fmt(e.depth)+" km"}<br>${dateStr(e.tmin,true)}`,{direction:"top",offset:[0,-4]});
     m.on("click",()=>{state.sel=e;renderDetail()});eventLayer.addLayer(m)}
   if(state.color==="cluster"||state.color==="dbscan"){const groups=new Map();for(const e of ev){const l=state.color==="cluster"?e.cl:dbLabels.get(e.row);if(l==null||l<0)continue;if(state.color==="dbscan"&&!dbColorIdx.get(l))continue;
       if(!groups.has(l))groups.set(l,[]);groups.get(l).push(e)}
     groups.forEach((g,l)=>{if(g.length<3)return;const la=median(g.map(e=>e.lat)),lo=median(g.map(e=>e.lon));const name=state.color==="cluster"?`G${l}`:`D${dbColorIdx.get(l)}`;
-      L.marker([la,lo],{interactive:false,keyboard:false,icon:L.divIcon({className:"",iconSize:null,html:`<span class="cl-label">${name}</span>`})}).addTo(labelLayer)})}
+      L.marker([la,lo],{interactive:false,keyboard:false,icon:L.divIcon({className:"",iconSize:null,html:`<span class="etq-grupo">${name}</span>`})}).addTo(labelLayer)})}
 }
 
-/* ---------- legend & detail ---------- */
+/* ---------- legend and detail ---------- */
+const filaLey=(color,txt,n)=>`<div class="fila"><i style="background:${color}"></i><span>${txt}</span>${n==null?"":`<span class="n">${n}</span>`}</div>`;
 function renderLegend(ev){const lg=$("#legend"),t=$("#legtitle");let h="";
-  if(state.color==="cluster"){t.textContent="Grupos MST-kNN";for(let k=1;k<=NCL;k++){const n=ev.filter(e=>e.cl===k).length;h+=`<div class="row"><i style="background:${C.cl[k]}"></i><span>Grupo ${k}</span><span class="num muted" style="margin-left:auto">${n}</span></div>`}
-    if(state.scope==="all")h+=`<div class="row"><i style="background:${C.cl[0]}"></i><span>Fuera del área de estudio</span><span class="num muted" style="margin-left:auto">${ev.filter(e=>!e.cl).length}</span></div>`}
-  else if(state.color==="dbscan"){t.textContent="Grupos DBSCAN";const sizes=[...dbColorIdx.entries()].filter(([,k])=>k);sizes.forEach(([l,k])=>{const n=ev.filter(e=>dbLabels.get(e.row)===l).length;h+=`<div class="row"><i style="background:${C.cl[k]}"></i><span>Grupo D${k}</span><span class="num muted" style="margin-left:auto">${n}</span></div>`});
-    const others=new Set([...dbLabels.values()].filter(l=>l>=0&&!dbColorIdx.get(l))).size;if(others)h+=`<div class="row"><i style="background:${C.ink2}"></i><span>${others} grupos menores</span></div>`;
-    h+=`<div class="row"><i style="background:${C.cl[0]}"></i><span>Ruido</span><span class="num muted" style="margin-left:auto">${ev.filter(e=>dbLabels.get(e.row)===-1).length}</span></div>`}
-  else if(state.color==="depth"){t.textContent="Profundidad (km)";h=`<div class="ramp"></div><div class="ramp-lbl"><span>0</span><span>10</span><span>50</span><span>200</span></div>`}
-  else{t.textContent="Días desde el sismo principal";h=`<div class="ramp"></div><div class="ramp-lbl"><span>0</span><span>5</span><span>30</span><span>${MAXDAY}</span></div>`}
+  if(state.color==="cluster"){t.textContent="MST-kNN clusters";for(let k=1;k<=NCL;k++)h+=filaLey(C.cl[k],`Cluster ${k}`,ev.filter(e=>e.cl===k).length);
+    if(state.scope==="all")h+=filaLey(C.cl[0],"Outside the study area",ev.filter(e=>!e.cl).length)}
+  else if(state.color==="dbscan"){t.textContent="DBSCAN clusters";[...dbColorIdx.entries()].filter(([,k])=>k).forEach(([l,k])=>{h+=filaLey(C.cl[k],`Cluster D${k}`,ev.filter(e=>dbLabels.get(e.row)===l).length)});
+    const others=new Set([...dbLabels.values()].filter(l=>l>=0&&!dbColorIdx.get(l))).size;if(others)h+=filaLey(C.ink2,`${others} smaller clusters`);
+    h+=filaLey(C.cl[0],"Noise",ev.filter(e=>dbLabels.get(e.row)===-1).length)}
+  else if(state.color==="depth"){t.textContent="Depth (km)";h=`<div class="rampa"></div><div class="rampa-etq"><span>0</span><span>10</span><span>50</span><span>200</span></div>`}
+  else{t.textContent="Days since the mainshock";h=`<div class="rampa"></div><div class="rampa-etq"><span>0</span><span>5</span><span>30</span><span>${MAXDAY}</span></div>`}
   lg.innerHTML=h;
-  $("#sizes").innerHTML=[3,4,5,6].map(m=>{const r=radius(m);return`<div><span class="dot" style="width:${2*r}px;height:${2*r}px"></span>M${m}</div>`}).join("");}
+  $("#sizes").innerHTML=[3,4,5,6].map(m=>{const r=radius(m);return`<div><span class="punto-m" style="width:${2*r}px;height:${2*r}px"></span>M${m}</div>`}).join("");}
 function renderDetail(){const e=state.sel,el=$("#detail");if(!e)return;
-  el.innerHTML=`<h3>Evento seleccionado</h3><dl class="detail">
-  <dt>Fecha local</dt><dd>${dateStr(e.tmin,true)}</dd><dt>Tras el principal</dt><dd>${dayLabel(e.t)}</dd>
-  <dt>Magnitud</dt><dd>${fmt(e.mag,2)}</dd><dt>Profundidad</dt><dd>${e.depth==null?"sin dato":fmt(e.depth)+" km"}${e.depth===10?' <span class="pill warn">valor por defecto</span>':""}</dd>
-  <dt>Coordenadas</dt><dd>${fmt(Math.abs(e.lat),2)}° ${e.lat>=0?"N":"S"}, ${fmt(Math.abs(e.lon),2)}° O</dd><dt>Distancia al epicentro</dt><dd>${fmt(hav(e,MS),0)} km</dd>
-  <dt>Región</dt><dd>${e.region}</dd><dt>Ciudad cercana</dt><dd>${e.city||'<span class="muted">nas</span>'}</dd>
-  <dt>Grupo MST-kNN</dt><dd>${e.cl?"G"+e.cl:"fuera del estudio"}</dd><dt>Fila en sismos.csv</dt><dd>${e.row+1}</dd></dl>`}
+  el.innerHTML=`<div class="titulo-tarjeta">Selected event ${e.cl?`<span class="insignia q1">G${e.cl}</span>`:""}</div><dl class="detalle">
+  <dt>Local date</dt><dd>${dateStr(e.tmin,true)}</dd><dt>After mainshock</dt><dd>${dayLabel(e.t)}</dd>
+  <dt>Magnitude</dt><dd>${fmt(e.mag,2)}</dd><dt>Depth</dt><dd>${e.depth==null?"no data":fmt(e.depth)+" km"}${e.depth===10?' <span class="insignia oa">default value</span>':""}</dd>
+  <dt>Coordinates</dt><dd>${fmt(Math.abs(e.lat),2)}° ${e.lat>=0?"N":"S"}, ${fmt(Math.abs(e.lon),2)}° W</dd><dt>To epicenter</dt><dd>${fmt(hav(e,MS),0)} km</dd>
+  <dt>Region</dt><dd>${e.region}</dd><dt>Nearest city</dt><dd>${e.city||'<span style="color:var(--texto3)">nas</span>'}</dd>
+  <dt>MST-kNN cluster</dt><dd>${e.cl?"G"+e.cl:"outside the study"}</dd><dt>Row in sismos.csv</dt><dd>${e.row+1}</dd></dl>`}
 
-/* ---------- KPIs ---------- */
+/* ---------- indicators ---------- */
+const kpi=(v,l)=>`<div class="tarjeta"><div class="kpi-valor">${v}</div><div class="kpi-etiqueta">${l}</div></div>`;
 function renderKpis(ev){const bv=bValue(ev.map(e=>e.mag)),om=omori(ev.map(e=>e.t));const mx=ev.reduce((a,e)=>e.mag>a?e.mag:a,0);
-  $("#kpis").innerHTML=[[ev.length.toLocaleString("es-EC"),"eventos visibles"],[ev.length?fmt(mx):"—","magnitud máxima"],[fmt(median(ev.filter(e=>e.depth!=null).map(e=>e.depth))),"profundidad mediana (km)"],
-    [bv?fmt(bv.b,2):"—","valor b"],[om&&om.p?fmt(om.p,2):"—","exponente p de Omori"]].map(([v,l])=>`<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join("")}
+  $("#kpis").innerHTML=kpi(ev.length.toLocaleString("en-US"),"Visible events")+kpi(ev.length?fmt(mx):"—","Maximum magnitude")+kpi(fmt(median(ev.filter(e=>e.depth!=null).map(e=>e.depth))),"Median depth (km)")+
+    kpi(bv?fmt(bv.b,2):"—","b-value")+kpi(om&&om.p?fmt(om.p,2):"—","Omori p exponent")}
 
-/* ---------- SVG chart kit ---------- */
+/* ---------- SVG charts ---------- */
 const NS="http://www.w3.org/2000/svg";
 function el(tag,attrs,parent){const n=document.createElementNS(NS,tag);for(const k in attrs)n.setAttribute(k,attrs[k]);if(parent)parent.appendChild(n);return n}
-const W=560,H=320,M={l:52,r:16,t:14,b:40};
+const W=560,H=320,M={l:54,r:16,t:16,b:42};
 function scale(d0,d1,r0,r1,log){if(log){const a=Math.log10(d0),b=Math.log10(d1);return v=>r0+(Math.log10(v)-a)/(b-a)*(r1-r0)}return v=>r0+(v-d0)/(d1-d0)*(r1-r0)}
 function frame(svg,xs,ys,xt,yt,xlab,ylab,xf=String,yf=String){svg.innerHTML="";const g=el("g",{class:"grid"},svg);
   yt.forEach(v=>{el("line",{x1:M.l,x2:W-M.r,y1:ys(v),y2:ys(v)},g);el("text",{x:M.l-8,y:ys(v)+4,"text-anchor":"end"},svg).textContent=yf(v)});
-  xt.forEach(v=>{el("text",{x:xs(v),y:H-M.b+16,"text-anchor":"middle"},svg).textContent=xf(v)});
+  xt.forEach(v=>{el("text",{x:xs(v),y:H-M.b+17,"text-anchor":"middle"},svg).textContent=xf(v)});
   el("line",{class:"axis",x1:M.l,x2:W-M.r,y1:H-M.b,y2:H-M.b},svg);
-  el("text",{x:(M.l+W-M.r)/2,y:H-6,"text-anchor":"middle"},svg).textContent=xlab;
-  el("text",{x:14,y:(M.t+H-M.b)/2,"text-anchor":"middle",transform:`rotate(-90 14 ${(M.t+H-M.b)/2})`},svg).textContent=ylab}
+  el("text",{x:(M.l+W-M.r)/2,y:H-5,"text-anchor":"middle"},svg).textContent=xlab;
+  el("text",{x:13,y:(M.t+H-M.b)/2,"text-anchor":"middle",transform:`rotate(-90 13 ${(M.t+H-M.b)/2})`},svg).textContent=ylab}
 const tip=$("#tip");
 function hover(svg,pts,html){svg.onmousemove=ev=>{const r=svg.getBoundingClientRect(),sx=W/r.width,x=(ev.clientX-r.left)*sx,y=(ev.clientY-r.top)*sx;let best=null,bd=18*18;
     for(const p of pts){const d=(p.x-x)**2+(p.y-y)**2;if(d<bd){bd=d;best=p}}
     if(!best){tip.hidden=true;return}tip.innerHTML=html(best.d);tip.hidden=false;const tx=Math.min(ev.clientX+14,window.innerWidth-tip.offsetWidth-8);tip.style.left=tx+"px";tip.style.top=(ev.clientY+14)+"px"};
   svg.onmouseleave=()=>{tip.hidden=true}}
+const nfmt=v=>v<1?String(v):v.toLocaleString("en-US");
 
 function chartOmori(ev){const svg=$("#omori"),om=omori(ev.map(e=>e.t));
   const xs=scale(0.1,1000,M.l,W-M.r,true),ys=scale(0.01,1000,H-M.b,M.t,true);
-  frame(svg,xs,ys,[0.1,1,10,100,1000],[0.01,0.1,1,10,100,1000],"días desde el sismo principal","eventos por día",v=>v<1?String(v).replace(".",","):v.toLocaleString("es-EC"),v=>v<1?String(v).replace(".",","):v.toLocaleString("es-EC"));
-  if(!om){$("#omorisub").textContent="Hacen falta al menos 20 eventos para estimar la tasa.";return}
-  if(om.p){const x0=1,x1=Math.min(MAXDAY,1000);el("line",{x1:xs(x0),y1:ys(om.k*x0**-om.p),x2:xs(x1),y2:ys(Math.max(om.k*x1**-om.p,0.01)),stroke:C.accent,"stroke-width":2,"stroke-dasharray":"5 4"},svg);
+  frame(svg,xs,ys,[0.1,1,10,100,1000],[0.01,0.1,1,10,100,1000],"days since the mainshock","events per day",nfmt,nfmt);
+  if(!om){$("#omorisub").textContent="At least 20 events are needed to estimate the rate.";return}
+  if(om.p){const x0=1,x1=Math.min(MAXDAY,1000);el("line",{x1:xs(x0),y1:ys(om.k*x0**-om.p),x2:xs(x1),y2:ys(Math.max(om.k*x1**-om.p,0.01)),stroke:C.gold,"stroke-width":2,"stroke-dasharray":"5 4"},svg);
     el("text",{class:"ann",x:W-M.r-4,y:M.t+12,"text-anchor":"end"},svg).textContent=`n(t) ∝ t^−${fmt(om.p,2)}`}
-  const pts=[];om.bins.filter(b=>b.n>0).forEach(b=>{const x=xs(b.mid),y=ys(Math.max(b.rate,0.01));el("circle",{cx:x,cy:y,r:4.5,fill:C.cl[1],stroke:C.surface,"stroke-width":2},svg);pts.push({x,y,d:b})});
-  hover(svg,pts,b=>`${fmt(b.a,b.a<1?2:0)} a ${fmt(b.b,b.b<1?2:0)} días<br>${b.n} eventos · ${fmt(b.rate,2)} por día`);
-  $("#omorisub").textContent=om.p?`Tasa en ventanas logarítmicas. Desde el día 1 la tasa cae con exponente p = ${fmt(om.p,2)}; valores cercanos a 1 son típicos en secuencias de subducción.`:"Muy pocos datos después del día 1 para ajustar la pendiente."}
+  const pts=[];om.bins.filter(b=>b.n>0).forEach(b=>{const x=xs(b.mid),y=ys(Math.max(b.rate,0.01));el("circle",{cx:x,cy:y,r:4.5,fill:C.green,stroke:C.surface,"stroke-width":2},svg);pts.push({x,y,d:b})});
+  hover(svg,pts,b=>`${fmt(b.a,b.a<1?2:0)} to ${fmt(b.b,b.b<1?2:0)} days<br>${b.n} events · ${fmt(b.rate,2)} per day`);
+  $("#omorisub").textContent=om.p?`Rate in logarithmic windows. From day 1 the rate decays with exponent p = ${fmt(om.p,2)}. Values close to 1 are typical of subduction sequences.`:"Too few data after day 1 to fit the slope."}
 
 function chartGR(ev){const svg=$("#gr"),ms=ev.map(e=>e.mag),bv=bValue(ms);
   const xs=scale(2,7.5,M.l,W-M.r),ys=scale(1,3000,H-M.b,M.t,true);
-  frame(svg,xs,ys,[2,3,4,5,6,7],[1,10,100,1000],"magnitud M","eventos con magnitud ≥ M",String,v=>v.toLocaleString("es-EC"));
-  if(!ms.length){$("#grsub").textContent="Sin eventos con los filtros actuales.";return}
+  frame(svg,xs,ys,[2,3,4,5,6,7],[1,10,100,1000],"magnitude M","events with magnitude ≥ M",String,v=>v.toLocaleString("en-US"));
+  if(!ms.length){$("#grsub").textContent="No events with the current filters.";return}
   const pts=[];const steps=[];for(let m=2;m<=7.01;m+=0.1)steps.push(+m.toFixed(1));
-  steps.forEach(m=>{const n=ms.filter(x=>x>=m-1e-9).length;if(!n)return;const x=xs(m),y=ys(n);el("circle",{cx:x,cy:y,r:3.2,fill:m>=(bv?bv.mc:99)-1e-9?C.cl[1]:C.muted,stroke:C.surface,"stroke-width":1.5},svg);pts.push({x,y,d:{m,n}})});
-  if(bv){const a=Math.log10(bv.n)+bv.b*bv.mc;const m1=Math.min(7.5,a/bv.b);el("line",{x1:xs(bv.mc),y1:ys(10**(a-bv.b*bv.mc)),x2:xs(m1),y2:ys(Math.max(10**(a-bv.b*m1),1)),stroke:C.accent,"stroke-width":2,"stroke-dasharray":"5 4"},svg);
+  steps.forEach(m=>{const n=ms.filter(x=>x>=m-1e-9).length;if(!n)return;const x=xs(m),y=ys(n);el("circle",{cx:x,cy:y,r:3.4,fill:m>=(bv?bv.mc:99)-1e-9?C.green:C.cl[0],stroke:C.surface,"stroke-width":1.5},svg);pts.push({x,y,d:{m,n}})});
+  if(bv){const a=Math.log10(bv.n)+bv.b*bv.mc;const m1=Math.min(7.5,a/bv.b);el("line",{x1:xs(bv.mc),y1:ys(10**(a-bv.b*bv.mc)),x2:xs(m1),y2:ys(Math.max(10**(a-bv.b*m1),1)),stroke:C.gold,"stroke-width":2,"stroke-dasharray":"5 4"},svg);
     el("line",{x1:xs(bv.mc),x2:xs(bv.mc),y1:M.t,y2:H-M.b,stroke:C.border,"stroke-dasharray":"2 3"},svg);
     el("text",{class:"ann",x:xs(bv.mc)+6,y:M.t+12},svg).textContent=`Mc ≈ ${fmt(bv.mc)}`;
     el("text",{class:"ann",x:W-M.r-4,y:M.t+12,"text-anchor":"end"},svg).textContent=`b = ${fmt(bv.b,2)} ± ${fmt(bv.se,2)}`;
-    $("#grsub").textContent=`Valor b por máxima verosimilitud (Aki) sobre ${bv.n} eventos con M ≥ ${fmt(bv.mc)}. Los puntos grises quedan bajo la magnitud de completitud.`}
-  else $("#grsub").textContent="Hacen falta más eventos para estimar el valor b.";
-  hover(svg,pts,d=>`M ≥ ${fmt(d.m)}: ${d.n} eventos`)}
+    $("#grsub").textContent=`Maximum likelihood b-value (Aki) from ${bv.n} events with M ≥ ${fmt(bv.mc)}. Gray points fall below the magnitude of completeness.`}
+  else $("#grsub").textContent="More events are needed to estimate the b-value.";
+  hover(svg,pts,d=>`M ≥ ${fmt(d.m)}: ${d.n} events`)}
 
-function scatter(svgId,ev,xf,xs,ys,tipf){const svg=$(svgId);const pts=[];
-  for(const e of [...ev].sort((a,b)=>b.mag-a.mag)){if(xf(e)==null)continue;const x=xs(xf(e)),y=ys(e);el("circle",{cx:x,cy:y,r:Math.max(2,radius(e.mag)*0.6),fill:colorOf(e),"fill-opacity":0.8,stroke:C.surface,"stroke-width":0.8},svg);pts.push({x,y,d:e})}
-  hover(svg,pts,tipf);svg.onclick=()=>{}}
-const evTip=e=>`M ${fmt(e.mag)} · ${e.depth==null?"sin prof.":fmt(e.depth)+" km"}<br>${dateStr(e.tmin,true)}${e.cl?" · G"+e.cl:""}`;
+function scatter(svg,ev,xf,xs,ys,tipf){const pts=[];
+  for(const e of [...ev].sort((a,b)=>b.mag-a.mag)){const x=xs(xf(e)),y=ys(e);el("circle",{cx:x,cy:y,r:Math.max(2,radius(e.mag)*0.6),fill:colorOf(e),"fill-opacity":0.85,stroke:C.surface,"stroke-width":0.8},svg);pts.push({x,y,d:e})}
+  hover(svg,pts,tipf)}
+const evTip=e=>`M ${fmt(e.mag)} · ${e.depth==null?"no depth":fmt(e.depth)+" km"}<br>${dateStr(e.tmin,true)}${e.cl?" · G"+e.cl:""}`;
 function chartXsec(ev){const svg=$("#xsec");const xs=scale(-2.2,1.6,M.l,W-M.r),dsc=scale(0,60,M.t,H-M.b);
-  frame(svg,xs,dsc,[-2,-1,0,1],[0,10,20,30,40,50,60],"latitud (° S ← → ° N)","profundidad (km)",v=>(v<0?`${-v}° S`:v>0?`${v}° N`:"0°"),String);
+  frame(svg,xs,dsc,[-2,-1,0,1],[0,10,20,30,40,50,60],"latitude","depth (km)",v=>(v<0?`${-v}° S`:v>0?`${v}° N`:"0°"),String);
   el("line",{x1:M.l,x2:W-M.r,y1:dsc(10),y2:dsc(10),stroke:C.accent,"stroke-dasharray":"3 4","stroke-width":1.2},svg);
-  el("polygon",{points:`${xs(MS.lat)-7},${dsc(MS.depth)} ${xs(MS.lat)},${dsc(MS.depth)-8} ${xs(MS.lat)+7},${dsc(MS.depth)} ${xs(MS.lat)},${dsc(MS.depth)+8}`,fill:C.accent,stroke:C.surface,"stroke-width":1.5},svg);
   const deep=ev.filter(e=>e.depth!=null&&e.depth>60).length;
-  scatter("#xsec",ev.filter(e=>e.depth!=null&&e.depth<=60&&e.lat>=-2.2&&e.lat<=1.6),e=>e.lat,xs,e=>dsc(e.depth),evTip);
-  if(deep)el("text",{class:"ann",x:W-M.r-4,y:H-M.b-8,"text-anchor":"end"},svg).textContent=`${deep} eventos bajo 60 km fuera del gráfico`}
+  scatter(svg,ev.filter(e=>e.depth!=null&&e.depth<=60&&e.lat>=-2.2&&e.lat<=1.6),e=>e.lat,xs,e=>dsc(e.depth),evTip);
+  el("polygon",{points:`${xs(MS.lat)-7},${dsc(MS.depth)} ${xs(MS.lat)},${dsc(MS.depth)-8} ${xs(MS.lat)+7},${dsc(MS.depth)} ${xs(MS.lat)},${dsc(MS.depth)+8}`,fill:C.accent,stroke:"#fff","stroke-width":1.5},svg);
+  if(deep)el("text",{class:"ann",x:W-M.r-4,y:H-M.b-8,"text-anchor":"end"},svg).textContent=`${deep} events deeper than 60 km not shown`}
 function chartMT(ev){const svg=$("#mt");const xs=scale(0.15,1000,M.l,W-M.r,true),ys=scale(2,8,H-M.b,M.t);
-  frame(svg,xs,ys,[1,10,100,1000],[2,3,4,5,6,7,8],"días desde el sismo principal (log)","magnitud",v=>v.toLocaleString("es-EC"),String);
+  frame(svg,xs,ys,[1,10,100,1000],[2,3,4,5,6,7,8],"days since the mainshock (log)","magnitude",v=>v.toLocaleString("en-US"),String);
   el("line",{x1:M.l,x2:M.l+6,y1:ys(7.8),y2:ys(7.8),stroke:C.accent,"stroke-width":3},svg);
-  el("text",{class:"ann",x:M.l+10,y:ys(7.8)+4},svg).textContent="Mw 7.8 principal";
-  scatter("#mt",ev.filter(e=>e.t>0.15),e=>e.t,xs,e=>ys(e.mag),evTip)}
+  el("text",{class:"ann",x:M.l+10,y:ys(7.8)+4},svg).textContent="Mw 7.8 mainshock";
+  scatter(svg,ev.filter(e=>e.t>0.15),e=>e.t,xs,e=>ys(e.mag),evTip)}
 
 /* ---------- cluster table ---------- */
-function renderTable(ev){const st=ev.filter(e=>e.cl);const sil=st.length<=1500?silhouette(st):new Map();
-  let h=`<thead><tr><th>Grupo</th><th>Eventos</th><th>M máx</th><th>M mediana</th><th>Prof. mediana</th><th>Centro</th><th>Dist. al epicentro</th><th>Primer evento</th><th>Silueta</th></tr></thead><tbody>`;
+function renderTable(ev){const st=ev.filter(e=>e.cl);const sil=silhouette(st);
+  let h=`<thead><tr><th>Cluster</th><th class="num">Events</th><th class="num">Max M</th><th class="num">Median M</th><th class="num">Median depth</th><th>Center</th><th class="num">To epicenter</th><th>First event</th><th class="num">Silhouette</th></tr></thead><tbody>`;
   for(let k=1;k<=NCL;k++){const g=st.filter(e=>e.cl===k);if(!g.length)continue;const la=median(g.map(e=>e.lat)),lo=median(g.map(e=>e.lon));const s=sil.get(k);
     const first=g.reduce((a,e)=>e.tmin<a.tmin?e:a);
-    h+=`<tr><td><span class="sw" style="background:${C.cl[k]}"></span>G${k}</td><td>${g.length}</td><td>${fmt(Math.max(...g.map(e=>e.mag)))}</td><td>${fmt(median(g.map(e=>e.mag)))}</td><td>${fmt(median(g.map(e=>e.depth)))} km</td>
-    <td>${fmt(Math.abs(la),2)}° ${la>=0?"N":"S"}, ${fmt(Math.abs(lo),2)}° O</td><td>${fmt(hav({lat:la,lon:lo},MS),0)} km</td><td>${dateStr(first.tmin)}</td>
-    <td>${s==null?"—":fmt(s,2)} ${s==null?"":s<0.1?'<span class="pill warn">débil</span>':s>0.5?'<span class="pill ok">nítido</span>':""}</td></tr>`}
+    const tag=s==null?"":s<0.1?' <span class="insignia q4">weak</span>':s>0.5?' <span class="insignia q1">well separated</span>':"";
+    h+=`<tr><td><span class="mancha" style="background:${C.cl[k]}"></span><b>G${k}</b></td><td class="num">${g.length}</td><td class="num">${fmt(Math.max(...g.map(e=>e.mag)))}</td><td class="num">${fmt(median(g.map(e=>e.mag)))}</td><td class="num">${fmt(median(g.map(e=>e.depth)))} km</td>
+    <td>${fmt(Math.abs(la),2)}° ${la>=0?"N":"S"}, ${fmt(Math.abs(lo),2)}° W</td><td class="num">${fmt(hav({lat:la,lon:lo},MS),0)} km</td><td>${dateStr(first.tmin)}</td>
+    <td class="num">${s==null?"—":fmt(s,2)}${tag}</td></tr>`}
   $("#cltable").innerHTML=h+"</tbody>"}
 
 /* ---------- DBSCAN ---------- */
 function runDb(ev){const{lab,k}=dbscan(ev,state.eps,state.minpts);dbLabels=new Map();ev.forEach((e,i)=>dbLabels.set(e.row,lab[i]));
   const sizes=new Map();lab.forEach(l=>{if(l>=0)sizes.set(l,(sizes.get(l)||0)+1)});const order=[...sizes.entries()].sort((a,b)=>b[1]-a[1]);dbColorIdx=new Map();order.forEach(([l],i)=>dbColorIdx.set(l,i<NCL?i+1:0));
   const both=ev.filter(e=>e.cl);const a=ari(both.map(e=>e.cl),both.map(e=>dbLabels.get(e.row)));const noise=[...lab].filter(l=>l<0).length;
-  $("#dbstats").innerHTML=[[k,"grupos encontrados"],[ev.length?fmt(100*noise/ev.length,0)+" %":"—","eventos como ruido"],[a==null?"—":fmt(a,2),"ARI frente a MST-kNN"],[order.length?order[0][1]:"—","eventos en el grupo mayor"]].map(([v,l])=>`<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join("")}
+  $("#dbstats").innerHTML=kpi(k,"Clusters found")+kpi(ev.length?fmt(100*noise/ev.length,0)+"%":"—","Events as noise")+kpi(a==null?"—":fmt(a,2),"ARI against MST-kNN")+kpi(order.length?order[0][1]:"—","Events in the largest cluster")}
 
-/* ---------- render all ---------- */
+/* ---------- render ---------- */
 let pending=0;
 function render(){cancelAnimationFrame(pending);pending=requestAnimationFrame(()=>{const ev=filtered();runDb(ev);renderKpis(ev);drawMap(ev);renderLegend(ev);renderTable(ev);chartOmori(ev);chartGR(ev);chartXsec(ev);chartMT(ev);
-  $("#magminv").textContent=`M ≥ ${fmt(state.magMin)}`;$("#depmaxv").textContent=state.depMax>=200?"todas":`≤ ${state.depMax} km`;const d=dayFromS(state.s);$("#timev").textContent=state.s>=1000?`todo el catálogo (${dayLabel(MAXDAY)})`:`hasta ${dayLabel(d)} · ${dateStr(MS.tmin+d*1440)}`;
+  $("#magminv").textContent=`M ≥ ${fmt(state.magMin)}`;$("#depmaxv").textContent=state.depMax>=200?"all":`≤ ${state.depMax} km`;const d=dayFromS(state.s);$("#timev").textContent=state.s>=1000?`full catalog (${dayLabel(MAXDAY)})`:`up to ${dayLabel(d)} · ${dateStr(MS.tmin+d*1440)}`;
   $("#epsv").textContent=`${state.eps} km`;$("#minptsv").textContent=state.minpts;})}
 
 /* ---------- controls ---------- */
 function seg(id,key){const box=$(id);box.addEventListener("click",ev=>{const b=ev.target.closest("button");if(!b)return;state[key]=b.dataset.v;box.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));render()})}
 seg("#scope","scope");seg("#colorby","color");
-function chips(){$("#chips").innerHTML=[1,2,3,4,5,0].map(k=>`<button type="button" class="chip" data-k="${k}" aria-pressed="${state.clusters.has(k)}" style="--sw:${C.cl[k]}"><i></i>${k?"G"+k:"Fuera"}</button>`).join("")}
-chips();
-$("#chips").addEventListener("click",ev=>{const b=ev.target.closest(".chip");if(!b)return;const k=+b.dataset.k;state.clusters.has(k)?state.clusters.delete(k):state.clusters.add(k);b.setAttribute("aria-pressed",String(state.clusters.has(k)));render()});
-const bind=(id,key,num=true)=>$(id).addEventListener("input",ev=>{state[key]=num?+ev.target.value:ev.target.value;render()});
+$("#chips").innerHTML=[1,2,3,4,5,0].map(k=>`<button type="button" class="insignia" data-k="${k}" aria-pressed="true" style="--sw:${C.cl[k]}"><i></i>${k?"G"+k:"Outside"}</button>`).join("");
+$("#chips").addEventListener("click",ev=>{const b=ev.target.closest("button");if(!b)return;const k=+b.dataset.k;state.clusters.has(k)?state.clusters.delete(k):state.clusters.add(k);b.setAttribute("aria-pressed",String(state.clusters.has(k)));render()});
+const bind=(id,key)=>$(id).addEventListener("input",ev=>{state[key]=+ev.target.value;render()});
 bind("#magmin","magMin");bind("#depmax","depMax");bind("#time","s");bind("#eps","eps");bind("#minpts","minpts");
-$("#showdb").addEventListener("click",()=>{state.color="dbscan";document.querySelectorAll("#colorby button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.v==="dbscan")));render();$("#map").scrollIntoView({behavior:"smooth",block:"center"})});
+$("#showdb").addEventListener("click",()=>{state.color="dbscan";document.querySelectorAll("#colorby button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.v==="dbscan")));render();$("#map-view").scrollIntoView({behavior:"smooth",block:"start"})});
 let timer=null;const playBtn=$("#play");
-function stop(){clearInterval(timer);timer=null;playBtn.textContent="▶ Reproducir";playBtn.setAttribute("aria-label","Reproducir secuencia")}
-playBtn.addEventListener("click",()=>{if(timer){stop();return}if(state.s>=1000)state.s=0;playBtn.textContent="❚❚ Pausa";playBtn.setAttribute("aria-label","Pausar secuencia");
+function stop(){clearInterval(timer);timer=null;playBtn.textContent="▶ Play";playBtn.setAttribute("aria-label","Play sequence")}
+playBtn.addEventListener("click",()=>{if(timer){stop();return}if(state.s>=1000)state.s=0;playBtn.textContent="❚❚ Pause";playBtn.setAttribute("aria-label","Pause sequence");
   timer=setInterval(()=>{state.s=Math.min(1000,state.s+6);$("#time").value=state.s;render();if(state.s>=1000)stop()},90)});
 
-/* ---------- theme changes ---------- */
-function retheme(){readColors();drawBase();epi.setIcon(epiIcon());chips();render()}
-try{matchMedia("(prefers-color-scheme: dark)").addEventListener("change",retheme)}catch(_){}
-new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+/* ---------- sidebar ---------- */
+const sb=$("#sidebar"),ov=$("#overlay"),mb=$("#menu");
+function menu(open){sb.classList.toggle("abierto",open);ov.hidden=!open;mb.setAttribute("aria-expanded",String(open))}
+mb.addEventListener("click",()=>menu(!sb.classList.contains("abierto")));ov.addEventListener("click",()=>menu(false));
+document.querySelectorAll("#nav a").forEach(a=>a.addEventListener("click",()=>menu(false)));
+const links=[...document.querySelectorAll("#nav a")];
+try{const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)links.forEach(a=>a.classList.toggle("activo",a.getAttribute("href")==="#"+e.target.id))})},{rootMargin:"-30% 0px -60% 0px"});
+  ["map-view","clusters","dynamics","dbscan","findings"].forEach(id=>io.observe(document.getElementById(id)))}catch(_){}
+const up=$("#arriba");addEventListener("scroll",()=>{up.hidden=scrollY<600},{passive:true});
 
 render();
 })();
