@@ -3,13 +3,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pedernales 2016 Aftershocks</title>
-<meta name="description" content="Interactive visualization of the aftershocks of the Mw 7.8 Ecuador earthquake (April 16, 2016) and their geographical clustering with MST-kNN. Universidad Técnica de Manabí.">
+<meta name="description" content="Interactive lab to explore the aftershocks of the Mw 7.8 Ecuador earthquake (April 16, 2016) and test their geographical clustering with MST-kNN and DBSCAN.">
+<link rel="icon" type="image/svg+xml" href="logo-jpa.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
 [hidden]{display:none!important}
-/* Sistema visual institucional UTM: sidebar fija con logo, contenido en tarjetas, paleta verde y amarillo. */
+/* Layout: lab workspace. Dark app bar with logo, tab strip, parameters panel on the left, results on the right. UTM green and gold palette. */
 :root{
   color-scheme:light;
   --bg:#f7f8f5; --superficie:#ffffff; --superficie2:#f0f2ec; --borde:#e1e5db;
@@ -17,163 +18,170 @@
   --g1:#1e6b14; --g2:#2e8a1f; --g3:#4aab30; --g4:#72c255; --g6:#e2f2da;
   --y3:#d4a80a; --y6:#fdf3cc; --y-tinta:#8a6500;
   --rojo:#b3261e;
+  --barra:#123b0e; --barra2:#0c2a09; --barra-linea:#2a5a22; --barra-tinta:#eef7e8; --barra-tinta2:#a9c79c;
   --r:12px;
   --sombra:0 1px 3px rgba(20,40,10,.06),0 4px 18px rgba(20,40,10,.05);
   --fs-micro:10.5px; --fs-xs:11.5px; --fs-sm:12.5px; --fs-md:13.5px; --fs-base:14px; --fs-lg:16px; --fs-xl:19px; --fs-2xl:22px; --fs-3xl:26px;
   --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-titulo:"Playfair Display",Georgia,"Times New Roman",serif;
-
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
   /* Clusters: institutional green and gold first; validated for color vision deficiency (all pairs). */
   --c0:#a3ab98; --c1:#2e8a1f; --c2:#d4a80a; --c3:#2a78d6; --c4:#c2457e; --c5:#4a3aa7;
   /* Sequential green ramp, low to high */
   --s1:#a8d88f; --s2:#4aab30; --s3:#2e8a1f; --s4:#1e6b14; --s5:#0f3d0a;
-  /* Aliases used by the map and chart code */
-  --ink:var(--texto); --ink-2:var(--texto2); --muted:var(--texto3); --line:var(--borde); --accent:var(--rojo); --surface:var(--superficie);
   --ocean:#e4ecee; --land:#ffffff; --land-alt:#eef0ea; --border:#c3cbbb;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{background:var(--bg);color:var(--texto)}
-body{font-family:var(--font);font-size:var(--fs-base);line-height:1.5}
+body{font-family:var(--font);font-size:var(--fs-base);line-height:1.5;min-height:100%;display:flex;flex-direction:column}
 a{color:var(--g1);text-decoration:none}
 a:hover{text-decoration:underline}
 button{font-family:inherit;cursor:pointer}
-.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible,[role=tab]:focus-visible{outline:2px solid var(--g3);outline-offset:2px;border-radius:6px}
 
-/* ---- estructura ---- */
-.app{display:flex;min-height:100%}
-.sidebar{width:240px;background:var(--superficie);border-right:1px solid var(--borde);position:fixed;top:0;bottom:0;display:flex;flex-direction:column;z-index:1200;overflow-y:auto;padding-top:env(safe-area-inset-top,0px)}
-.sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid var(--borde);display:grid;gap:12px}
-.sidebar-logo img{width:100%;max-width:190px;height:auto}
-.sidebar-logo h1{font-family:var(--font-titulo);font-size:var(--fs-lg);color:var(--g1);line-height:1.3}
-.sidebar-logo p{font-size:var(--fs-xs);color:var(--texto3);margin-top:3px}
-.seccion-nav{font-size:var(--fs-micro);font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--texto3);padding:16px 16px 6px}
-.nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;margin:1px 8px;border-radius:8px;font-size:var(--fs-md);color:var(--texto2);width:calc(100% - 16px);transition:all .13s}
-.nav-item:hover{background:var(--superficie2);color:var(--texto);text-decoration:none}
-.nav-item.activo{background:var(--g6);color:var(--g1);font-weight:600}
-.nav-item svg{flex:none}
-.sidebar-pie{margin-top:auto;padding:14px 16px;border-top:1px solid var(--borde);font-size:var(--fs-micro);color:var(--texto3);line-height:1.6}
-.contenido{margin-left:240px;flex:1;min-width:0;padding:26px 32px 48px;display:grid;gap:18px;align-content:start}
-.menu-toggle{display:none}
-.sidebar-overlay{display:none}
-@media (max-width:860px){
-  .app{flex-direction:column}
-  .contenido{margin-left:0;padding:18px;padding-top:60px}
-  .sidebar{transform:translateX(-100%);transition:transform .22s ease;width:260px;box-shadow:0 0 40px rgba(0,0,0,.18)}
-  .sidebar.abierto{transform:translateX(0)}
-  .menu-toggle{display:inline-flex;align-items:center;gap:7px;position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:10px;z-index:1100;background:var(--superficie);border:1px solid var(--borde);border-radius:9px;padding:8px 12px;font-size:var(--fs-md);font-weight:600;color:var(--texto);box-shadow:var(--sombra)}
-  .sidebar-overlay:not([hidden]){display:block;position:fixed;inset:0;background:rgba(20,30,12,.38);z-index:1150}
-}
+/* ---- app bar ---- */
+.appbar{background:linear-gradient(180deg,var(--barra),var(--barra2));color:var(--barra-tinta);padding-inline:20px;padding-block:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.appbar img{height:46px;width:auto;display:block;flex:none}
+.appbar .sep{width:1px;align-self:stretch;background:var(--barra-linea)}
+.appbar .ttl{display:grid;gap:1px;min-width:0;flex:1}
+.appbar .ttl b{font-size:var(--fs-lg);font-weight:600;letter-spacing:.005em;color:#fff}
+.appbar .ttl span{font-family:var(--mono);font-size:var(--fs-xs);color:var(--barra-tinta2)}
+.appbar nav{display:flex;gap:6px;flex-wrap:wrap}
+.appbar nav a{color:var(--barra-tinta);font-size:var(--fs-sm);font-weight:500;padding:6px 11px;border:1px solid var(--barra-linea);border-radius:8px;display:inline-flex;gap:6px;align-items:center}
+.appbar nav a:hover{background:rgba(255,255,255,.08);text-decoration:none;border-color:var(--g4)}
+.franja{height:3px;background:linear-gradient(90deg,var(--g3) 0 70%,var(--y3) 70% 100%)}
 
-/* ---- componentes ---- */
-.franja{height:4px;border-radius:99px;background:linear-gradient(90deg,var(--g1) 0 62%,var(--y3) 62% 100%);width:120px}
-.titulo-pagina{font-size:var(--fs-2xl);font-weight:700;line-height:1.25;text-wrap:balance}
-.subtitulo-pagina{color:var(--texto2);font-size:var(--fs-md);max-width:78ch}
-.cabecera{display:grid;gap:8px}
-.antetitulo{font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--y-tinta)}
-.cuadricula{display:grid;gap:14px}
-.cuadricula>*{min-width:0}
-.kpis{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
-.tarjeta{background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:18px;box-shadow:var(--sombra);min-width:0}
-.kpi-valor{font-size:var(--fs-3xl);font-weight:700;color:var(--g1);font-variant-numeric:tabular-nums;line-height:1.2}
-.kpi-etiqueta{font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--texto3);margin-top:4px}
-.titulo-tarjeta{font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--texto3);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.texto-tarjeta{font-size:var(--fs-sm);color:var(--texto2);margin-bottom:10px;max-width:68ch}
-.fila-graficos{grid-template-columns:repeat(2,minmax(0,1fr))}
-@media (max-width:1000px){.fila-graficos{grid-template-columns:minmax(0,1fr)}}
-.titulo-seccion{font-size:var(--fs-xl);font-weight:700;scroll-margin-top:20px}
-.seccion{display:grid;gap:12px;scroll-margin-top:20px}
-.seccion>p{font-size:var(--fs-md);color:var(--texto2);max-width:80ch}
+/* ---- tabs ---- */
+.tabs{background:var(--superficie);border-bottom:1px solid var(--borde);padding-inline:20px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;position:sticky;top:env(safe-area-inset-top,0px);z-index:1100}
+.tabs::-webkit-scrollbar{display:none}
+.tab{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:12px 14px 10px;font-size:var(--fs-md);font-weight:600;color:var(--texto3);border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--texto2)}
+.tab[aria-selected="true"]{color:var(--g1);border-bottom-color:var(--g1)}
+.tab .k{font-family:var(--mono);font-size:var(--fs-micro);font-weight:500;color:var(--texto3);border:1px solid var(--borde);border-radius:4px;padding:0 4px;line-height:16px}
+.tab[aria-selected="true"] .k{color:var(--g1);border-color:var(--g4);background:var(--g6)}
 
-/* controles */
-.barra-controles{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:flex-end;background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:12px 14px}
-.control{display:grid;gap:5px;min-width:0}
-.control>label,.control>.etq{font-size:var(--fs-micro);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--texto3)}
-.grupo-botones{display:inline-flex;flex-wrap:wrap;gap:5px}
-.boton{padding:8px 16px;border-radius:8px;border:none;background:var(--g1);color:#fff;font-size:var(--fs-md);font-weight:600;transition:background .13s;display:inline-flex;align-items:center;gap:6px}
+/* ---- workspace ---- */
+.workspace{flex:1;display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px;padding:16px 20px 24px;align-items:start;width:100%;max-width:1560px;margin-inline:auto}
+@media (max-width:900px){.workspace{grid-template-columns:minmax(0,1fr);padding:12px 16px 20px}}
+.params{background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);box-shadow:var(--sombra);position:sticky;top:calc(56px + env(safe-area-inset-top,0px));max-height:calc(100vh - 72px);overflow:auto}
+@media (max-width:900px){.params{position:static;max-height:none}}
+.params summary{list-style:none;display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--borde);font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--texto2);cursor:pointer}
+.params summary::-webkit-details-marker{display:none}
+.params summary .chev{transition:transform .15s}
+.params[open] summary .chev{transform:rotate(180deg)}
+@media (min-width:901px){.params summary{cursor:default}.params summary .chev{display:none}}
+.params .reset{all:unset;cursor:pointer;margin-left:auto;font-size:var(--fs-xs);font-weight:600;letter-spacing:0;text-transform:none;color:var(--g1);padding:2px 8px;border-radius:6px}
+.params .reset:hover{background:var(--g6)}
+.grupo{padding:12px 14px;border-bottom:1px solid var(--borde);display:grid;gap:10px}
+.grupo h3{font-size:var(--fs-micro);font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--texto3)}
+.campo{display:grid;gap:6px}
+.campo>label,.campo>.etq{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-sm);color:var(--texto2);font-weight:500}
+.campo output{font-family:var(--mono);font-size:var(--fs-xs);color:var(--g1);font-weight:600}
+input[type=range]{accent-color:var(--g1);width:100%}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--borde);border-radius:8px;overflow:hidden;background:var(--superficie2)}
+.seg button{all:unset;cursor:pointer;text-align:center;padding:6px 4px;font-size:var(--fs-sm);font-weight:500;color:var(--texto2);border-right:1px solid var(--borde)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--g1);color:#fff;font-weight:600}
+.seg.cuatro{grid-template-columns:1fr 1fr;grid-auto-flow:row}
+.seg.cuatro button:nth-child(2){border-right:0}
+.seg.cuatro button:nth-child(-n+2){border-bottom:1px solid var(--borde)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;font-size:var(--fs-xs);font-weight:600;border:1px solid var(--borde);background:var(--superficie);color:var(--texto)}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--sw)}
+.chip[aria-pressed="false"]{background:var(--superficie2);color:var(--texto3)}
+.chip[aria-pressed="false"] i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--sw)}
+.boton{border:none;background:var(--g1);color:#fff;padding:7px 14px;border-radius:8px;font-size:var(--fs-sm);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .13s;white-space:nowrap}
 .boton:hover{background:var(--g2)}
 .boton.secundario{background:var(--superficie2);color:var(--texto2);border:1px solid var(--borde)}
 .boton.secundario:hover{background:var(--g6);color:var(--g1)}
-.boton.pequeno{padding:5px 11px;font-size:var(--fs-sm)}
-.boton.secundario[aria-pressed="true"]{background:var(--g1);border-color:var(--g1);color:#fff}
-.insignia{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:var(--fs-xs);font-weight:600;white-space:nowrap}
-button.insignia{border:1px solid var(--borde);background:var(--superficie);color:var(--texto)}
-button.insignia i{width:9px;height:9px;border-radius:50%;background:var(--sw)}
-button.insignia[aria-pressed="false"]{background:var(--superficie2);color:var(--texto3)}
-button.insignia[aria-pressed="false"] i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--sw)}
-.insignia.q1{background:#e2f2da;color:#1e6b14}
-.insignia.q4{background:#f9e4e2;color:#a3322a}
-.insignia.oa{background:var(--y6);color:var(--y-tinta)}
-input[type=range]{accent-color:var(--g1);width:170px;max-width:100%}
-.valor-rango{font-size:var(--fs-sm);color:var(--texto);font-weight:600;font-variant-numeric:tabular-nums}
-.fila-rango{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.fila-rango.ancha input{width:min(440px,62vw)}
+.fila{display:flex;gap:8px;align-items:center}
+.fila input{flex:1;min-width:0}
+.estado{padding:10px 14px;font-family:var(--mono);font-size:var(--fs-xs);color:var(--texto3);display:flex;align-items:center;gap:8px}
+.estado i{width:7px;height:7px;border-radius:50%;background:var(--g3);flex:none}
 
-/* mapa y panel lateral */
-.escenario{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
-@media (max-width:1100px){.escenario{grid-template-columns:minmax(0,1fr)}}
+/* ---- stage ---- */
+.stage{display:grid;gap:14px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi:last-child:nth-child(odd){grid-column:1/-1}}
+.kpi{background:var(--superficie);border:1px solid var(--borde);border-radius:10px;padding:10px 12px;min-width:0}
+.kpi b{display:block;font-family:var(--mono);font-size:var(--fs-xl);font-weight:600;color:var(--g1);font-variant-numeric:tabular-nums;line-height:1.3}
+.kpi span{font-size:var(--fs-micro);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--texto3)}
+.tarjeta{background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:16px;box-shadow:var(--sombra);min-width:0}
+.titulo-tarjeta{font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--texto3);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.texto{font-size:var(--fs-sm);color:var(--texto2);max-width:78ch}
+.panel{display:grid;gap:14px;min-width:0}
+.panel-head{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap}
+.panel-head h2{font-size:var(--fs-lg);font-weight:700}
+.panel-head p{font-size:var(--fs-sm);color:var(--texto2);flex:1 1 360px;max-width:90ch}
+
+/* map */
+.mapa-grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px;align-items:start}
+@media (max-width:1200px){.mapa-grid{grid-template-columns:minmax(0,1fr)}}
 .tarjeta.mapa{padding:0;overflow:hidden}
-#map{height:clamp(420px,66vh,660px);background:var(--ocean)}
+#leaflet{height:clamp(420px,calc(100vh - 250px),720px);background:var(--ocean)}
 .lateral{display:grid;gap:14px;min-width:0}
+@media (max-width:1200px) and (min-width:700px){.lateral{grid-template-columns:1fr 1fr}}
 .leyenda{display:grid;gap:7px;font-size:var(--fs-md)}
-.leyenda .fila{display:flex;align-items:center;gap:8px}
+.leyenda .f{display:flex;align-items:center;gap:8px}
 .leyenda i{width:11px;height:11px;border-radius:50%;flex:none}
-.leyenda .n{margin-left:auto;color:var(--texto3);font-variant-numeric:tabular-nums}
+.leyenda .n{margin-left:auto;font-family:var(--mono);font-size:var(--fs-xs);color:var(--texto3)}
 .rampa{height:10px;border-radius:99px;background:linear-gradient(90deg,var(--s1),var(--s2),var(--s3),var(--s4),var(--s5))}
-.rampa-etq{display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--texto3)}
-.tamanos{display:flex;align-items:flex-end;gap:14px;font-size:var(--fs-xs);color:var(--texto3);margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)}
+.rampa-etq{display:flex;justify-content:space-between;font-family:var(--mono);font-size:var(--fs-micro);color:var(--texto3)}
+.tamanos{display:flex;align-items:flex-end;gap:14px;font-family:var(--mono);font-size:var(--fs-micro);color:var(--texto3);margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)}
 .tamanos div{display:grid;justify-items:center;gap:4px}
-.tamanos span.punto-m{border-radius:50%;border:1.5px solid var(--texto2)}
+.tamanos span{border-radius:50%;border:1.5px solid var(--texto2)}
 dl.detalle{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:var(--fs-sm)}
 dl.detalle dt{color:var(--texto3)}
-dl.detalle dd{font-variant-numeric:tabular-nums;font-weight:500;min-width:0;overflow-wrap:anywhere}
+dl.detalle dd{font-family:var(--mono);font-size:var(--fs-xs);font-weight:500;min-width:0;overflow-wrap:anywhere;align-self:center}
 
-/* gráficos */
-.grafico svg{width:100%;height:auto;display:block;overflow:visible}
-.grafico svg text{fill:var(--texto3);font-family:var(--font);font-size:11px}
-.grafico svg .ann{fill:var(--texto);font-size:12px;font-weight:600}
+/* charts */
+.graficos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:1100px){.graficos{grid-template-columns:minmax(0,1fr)}}
+.grafico svg{width:100%;height:auto;display:block;overflow:visible;margin-top:6px}
+.grafico svg text{fill:var(--texto3);font-family:var(--mono);font-size:10.5px}
+.grafico svg .ann{fill:var(--texto);font-size:11.5px;font-weight:600}
 .grafico svg .grid line{stroke:var(--borde);stroke-width:1}
 .grafico svg .axis{stroke:var(--border);stroke-width:1}
+@media (max-width:640px){.grafico svg text{font-size:13px}.grafico svg .ann{font-size:13px}}
 
-/* tablas */
+/* tables */
 .tabla-contenedor{overflow-x:auto}
 .tabla{width:100%;border-collapse:collapse;font-size:var(--fs-md)}
 .tabla th{text-align:left;padding:9px 10px;font-size:var(--fs-micro);text-transform:uppercase;letter-spacing:.06em;color:var(--texto3);border-bottom:2px solid var(--borde);white-space:nowrap;font-weight:600}
 .tabla td{padding:9px 10px;border-bottom:1px solid var(--borde);white-space:nowrap}
 .tabla tr:last-child td{border-bottom:0}
 .tabla tr:hover td{background:var(--superficie2)}
-.tabla .num{text-align:right;font-variant-numeric:tabular-nums;width:1%}
+.tabla .num{text-align:right;font-family:var(--mono);font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
 .tabla th.num{text-align:right}
+.tabla td.cero{color:var(--borde)}
+.tabla td.alto{background:var(--g6);color:var(--g1);font-weight:600}
 .mancha{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:-1px}
+.insignia{display:inline-block;padding:2px 9px;border-radius:99px;font-family:var(--font);font-size:var(--fs-xs);font-weight:600;white-space:nowrap;margin-left:6px}
+.insignia.q1{background:#e2f2da;color:#1e6b14}
+.insignia.q4{background:#f9e4e2;color:#a3322a}
+.insignia.oa{background:var(--y6);color:var(--y-tinta)}
 
-.hallazgos{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.hallazgos{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
 .hallazgos .tarjeta{display:grid;gap:8px;align-content:start;border-top:3px solid var(--g2)}
 .hallazgos .tarjeta:nth-child(even){border-top-color:var(--y3)}
-.hallazgos h3{font-size:var(--fs-lg);font-weight:600;color:var(--texto)}
+.hallazgos h3{font-size:var(--fs-lg);font-weight:600}
 .hallazgos p{font-size:var(--fs-md);color:var(--texto2)}
-code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:.92em;background:var(--superficie2);padding:1px 5px;border-radius:4px}
-.pie{font-size:var(--fs-xs);color:var(--texto3);border-top:1px solid var(--borde);padding-top:14px;display:grid;gap:4px}
+code{font-family:var(--mono);font-size:.9em;background:var(--superficie2);padding:1px 5px;border-radius:4px}
 
-.ir-arriba{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:1000;display:inline-flex;align-items:center;gap:6px;padding:10px 15px;border-radius:99px;border:1px solid var(--borde);background:var(--superficie);color:var(--texto2);font-size:var(--fs-md);font-weight:600;box-shadow:0 4px 16px rgba(20,40,10,.16)}
-.ir-arriba:hover{border-color:var(--g4);color:var(--g1);text-decoration:none}
+.pie{border-top:1px solid var(--borde);background:var(--superficie);padding-inline:20px;padding-block:12px;font-size:var(--fs-sm);color:var(--texto2);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pie a{font-family:var(--mono);font-size:var(--fs-xs)}
 
-a:focus-visible,button:focus-visible,input:focus-visible,.nav-item:focus-visible{outline:2px solid var(--g2);outline-offset:2px;border-radius:6px}
-
-#tip{position:fixed;pointer-events:none;z-index:2000;background:var(--texto);color:#fff;font-size:var(--fs-sm);line-height:1.45;padding:7px 10px;border-radius:8px;max-width:260px;box-shadow:0 6px 20px rgba(20,40,10,.16)}
+#tip{position:fixed;pointer-events:none;z-index:2000;background:var(--texto);color:#fff;font-family:var(--mono);font-size:var(--fs-xs);line-height:1.5;padding:7px 10px;border-radius:8px;max-width:270px;box-shadow:0 6px 20px rgba(20,40,10,.16)}
 
 @media (max-width:640px){
-  .kpis{grid-template-columns:repeat(2,1fr);gap:10px}
-  .kpi-valor{font-size:var(--fs-2xl)}
-  .kpi-etiqueta{font-size:var(--fs-micro)}
-  .titulo-pagina{font-size:var(--fs-xl)}
-  .subtitulo-pagina{font-size:var(--fs-sm)}
-  .tarjeta{padding:14px}
-  .fila-graficos{grid-template-columns:1fr}
-  .barra-controles{padding:12px;gap:12px}
-  .ir-arriba{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));padding:9px 14px}
-  .grafico svg text{font-size:13px}
-  .grafico svg .ann{font-size:13px}
+  .appbar{padding-inline:16px;gap:12px}
+  .appbar img{height:38px}
+  .appbar .sep{display:none}
+  .appbar nav{width:100%}
+  .tabs{padding-inline:8px}
+  .pie{padding-inline:16px}
 }
-@media (max-width:380px){.kpis{grid-template-columns:1fr}}
 
 /* Leaflet 1.9.4 (BSD-2-Clause), essential styles inlined */
 .leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
@@ -200,80 +208,78 @@ a:focus-visible,button:focus-visible,input:focus-visible,.nav-item:focus-visible
 .leaflet-bar a:hover{background:var(--g6);text-decoration:none}
 .leaflet-bar a:last-child{border-bottom:0}
 .leaflet-bar a.leaflet-disabled{color:var(--texto3);cursor:default;background:var(--superficie)}
-.leaflet-control-scale-line{border:1.5px solid var(--texto2);border-top:0;padding:0 5px;font:11px var(--font);color:var(--texto2);background:rgba(255,255,255,.85);white-space:nowrap}
+.leaflet-control-scale-line{border:1.5px solid var(--texto2);border-top:0;padding:0 5px;font:11px var(--mono);color:var(--texto2);background:rgba(255,255,255,.85);white-space:nowrap}
 .leaflet-control-attribution{background:rgba(255,255,255,.85);color:var(--texto3);padding:0 6px;font-size:10px;margin:0!important}
-.leaflet-tooltip{position:absolute;padding:6px 9px;background:var(--texto);color:#fff;border-radius:8px;white-space:nowrap;pointer-events:none;font-family:var(--font);font-size:12px;line-height:1.4}
-.leaflet-tooltip.lugar{background:transparent;color:var(--texto2);padding:0;font-size:11px;font-weight:600;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff}
-.etq-grupo{font:700 12px var(--font);color:var(--texto);background:var(--superficie);border:1.5px solid var(--texto);border-radius:6px;padding:0 5px;white-space:nowrap;transform:translate(-50%,-50%);display:inline-block}
+.leaflet-tooltip{position:absolute;padding:6px 9px;background:var(--texto);color:#fff;border-radius:8px;white-space:nowrap;pointer-events:none;font-family:var(--mono);font-size:11.5px;line-height:1.45}
+.leaflet-tooltip.lugar{background:transparent;color:var(--texto2);padding:0;font-family:var(--font);font-size:11px;font-weight:600;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff}
+.etq-grupo{font:600 11px var(--mono);color:var(--texto);background:var(--superficie);border:1.5px solid var(--texto);border-radius:6px;padding:0 5px;white-space:nowrap;transform:translate(-50%,-50%);display:inline-block}
 .epi svg{display:block}
-@media (prefers-reduced-motion:reduce){.leaflet-zoom-anim .leaflet-zoom-animated,.sidebar,.nav-item{transition:none}}
+@media (prefers-reduced-motion:reduce){.leaflet-zoom-anim .leaflet-zoom-animated,.params summary .chev{transition:none}}
 </style>
 
-<div class="app">
-  <button type="button" class="menu-toggle" id="menu" aria-expanded="false" aria-controls="sidebar">
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Menu</button>
-  <div class="sidebar-overlay" id="overlay" hidden></div>
+<header class="appbar">
+  <img src="logo-jpa.svg" alt="Jorge Párraga Álava" width="99" height="54">
+  <span class="sep" aria-hidden="true"></span>
+  <div class="ttl"><b>Aftershock Clustering Lab</b><span>Mw 7.8 Pedernales, Ecuador · 2016-04-16 18:58 local · depth ≈ 21 km</span></div>
+  <nav aria-label="Links">
+    <a href="https://doi.org/10.1109/SCCC.2018.8705248">Paper ↗</a>
+    <a href="https://github.com/jorgeklz/paper-earthquake-clustering">GitHub ↗</a>
+  </nav>
+</header>
+<div class="franja" aria-hidden="true"></div>
 
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <img src="logo-utm.png" alt="Universidad Técnica de Manabí, founded in 1952" width="483" height="189">
-      <div><h1>Aftershocks of the Pedernales Earthquake</h1><p>Geographical clustering with MST-kNN</p></div>
-    </div>
-    <div class="seccion-nav">Sections</div>
-    <nav id="nav">
-      <a class="nav-item activo" href="#map-view"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.5l4-1.5 5 1.5 4-1.5v10.5l-4 1.5-5-1.5-4 1.5z M5.5 2v10.5 M10.5 3.5V14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Map</a>
-      <a class="nav-item" href="#clusters"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5" cy="5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="7" cy="11.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Cluster summary</a>
-      <a class="nav-item" href="#dynamics"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8h3l2-5 3 10 2-5h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>Sequence dynamics</a>
-      <a class="nav-item" href="#dbscan"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.5 2"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/></svg>DBSCAN comparison</a>
-      <a class="nav-item" href="#findings"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a4.5 4.5 0 00-2.5 8.2V12h5V9.7A4.5 4.5 0 008 1.5zM6 14h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Findings</a>
-    </nav>
-    <div class="sidebar-pie">
-      J. Parraga-Alava, Ph.D.<br>
-      Data: IG-EPN, April 2016 to May 2018.<br>
-      <a href="https://github.com/jorgeklz/paper-earthquake-clustering">Code on GitHub</a>
-    </div>
-  </aside>
+<div class="tabs" role="tablist" aria-label="Views" id="tabs">
+  <button class="tab" role="tab" id="tab-map" aria-controls="panel-map" aria-selected="true" data-tab="map"><span class="k">1</span>Map</button>
+  <button class="tab" role="tab" id="tab-clusters" aria-controls="panel-clusters" aria-selected="false" tabindex="-1" data-tab="clusters"><span class="k">2</span>Clusters</button>
+  <button class="tab" role="tab" id="tab-sequence" aria-controls="panel-sequence" aria-selected="false" tabindex="-1" data-tab="sequence"><span class="k">3</span>Sequence</button>
+  <button class="tab" role="tab" id="tab-dbscan" aria-controls="panel-dbscan" aria-selected="false" tabindex="-1" data-tab="dbscan"><span class="k">4</span>DBSCAN</button>
+  <button class="tab" role="tab" id="tab-findings" aria-controls="panel-findings" aria-selected="false" tabindex="-1" data-tab="findings"><span class="k">5</span>Findings</button>
+</div>
 
-  <main class="contenido" id="top">
-    <header class="cabecera">
-      <div class="franja" aria-hidden="true"></div>
-      <span class="antetitulo">Mw 7.8 · April 16, 2016 · 18:58 local time · depth ≈ 21 km</span>
-      <h2 class="titulo-pagina">Aftershocks of the Pedernales earthquake and their geographical clustering</h2>
-      <p class="subtitulo-pagina">Catalog from the Geophysical Institute (IG-EPN) with the clusters found by MST-kNN on Haversine distances. Filter by magnitude, depth or cluster, replay the sequence day by day and compare the result with DBSCAN.</p>
-    </header>
+<div class="workspace">
+  <details class="params" id="params" open>
+    <summary>Parameters <button type="button" class="reset" id="reset">Reset</button>
+      <svg class="chev" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></summary>
 
-    <div class="cuadricula kpis" id="kpis" aria-live="polite"></div>
-
-    <div class="barra-controles" role="group" aria-label="Filters">
-      <div class="control"><span class="etq">Events</span>
-        <div class="grupo-botones" id="scope">
-          <button type="button" class="boton secundario pequeno" data-v="study" aria-pressed="true">Study area</button>
-          <button type="button" class="boton secundario pequeno" data-v="all" aria-pressed="false">Full catalog</button>
+    <div class="grupo">
+      <h3>Dataset</h3>
+      <div class="seg" id="scope">
+        <button type="button" data-v="study" aria-pressed="true">Study area</button>
+        <button type="button" data-v="all" aria-pressed="false">Full catalog</button>
+      </div>
+      <div class="campo"><span class="etq">Color by</span>
+        <div class="seg cuatro" id="colorby">
+          <button type="button" data-v="cluster" aria-pressed="true">MST-kNN</button>
+          <button type="button" data-v="dbscan" aria-pressed="false">DBSCAN</button>
+          <button type="button" data-v="depth" aria-pressed="false">Depth</button>
+          <button type="button" data-v="time" aria-pressed="false">Time</button>
         </div></div>
-      <div class="control"><span class="etq">Color by</span>
-        <div class="grupo-botones" id="colorby">
-          <button type="button" class="boton secundario pequeno" data-v="cluster" aria-pressed="true">MST-kNN</button>
-          <button type="button" class="boton secundario pequeno" data-v="dbscan" aria-pressed="false">DBSCAN</button>
-          <button type="button" class="boton secundario pequeno" data-v="depth" aria-pressed="false">Depth</button>
-          <button type="button" class="boton secundario pequeno" data-v="time" aria-pressed="false">Time</button>
-        </div></div>
-      <div class="control"><span class="etq">MST-kNN clusters</span><div class="grupo-botones" id="chips"></div></div>
-      <div class="control"><label for="magmin">Minimum magnitude</label>
-        <div class="fila-rango"><input id="magmin" type="range" min="2" max="6" step="0.1" value="2"><span class="valor-rango" id="magminv"></span></div></div>
-      <div class="control"><label for="depmax">Maximum depth</label>
-        <div class="fila-rango"><input id="depmax" type="range" min="5" max="200" step="5" value="200"><span class="valor-rango" id="depmaxv"></span></div></div>
-      <div class="control"><label for="time">Time since the mainshock</label>
-        <div class="fila-rango ancha">
-          <button type="button" class="boton pequeno" id="play" aria-label="Play sequence">▶ Play</button>
-          <input id="time" type="range" min="0" max="1000" step="1" value="1000">
-          <span class="valor-rango" id="timev"></span>
-        </div></div>
+      <div class="campo"><span class="etq">MST-kNN clusters</span><div class="chips" id="chips"></div></div>
     </div>
 
-    <section class="seccion" id="map-view" aria-labelledby="t-map">
-      <h2 class="titulo-seccion" id="t-map">Aftershock map</h2>
-      <div class="escenario">
-        <div class="tarjeta mapa"><div id="map" role="region" aria-label="Aftershock map"></div></div>
+    <div class="grupo">
+      <h3>Filters</h3>
+      <div class="campo"><label for="magmin">Minimum magnitude <output id="magminv" for="magmin"></output></label><input id="magmin" type="range" min="2" max="6" step="0.1" value="2"></div>
+      <div class="campo"><label for="depmax">Maximum depth <output id="depmaxv" for="depmax"></output></label><input id="depmax" type="range" min="5" max="200" step="5" value="200"></div>
+      <div class="campo"><label for="time">Time since mainshock <output id="timev" for="time"></output></label>
+        <div class="fila"><button type="button" class="boton" id="play" aria-label="Play sequence">▶ Play</button><input id="time" type="range" min="0" max="1000" step="1" value="1000"></div></div>
+    </div>
+
+    <div class="grupo">
+      <h3>DBSCAN</h3>
+      <div class="campo"><label for="eps">Radius ε <output id="epsv" for="eps"></output></label><input id="eps" type="range" min="3" max="40" step="1" value="12"></div>
+      <div class="campo"><label for="minpts">Minimum neighbors <output id="minptsv" for="minpts"></output></label><input id="minpts" type="range" min="3" max="30" step="1" value="8"></div>
+    </div>
+
+    <div class="estado" aria-live="polite"><i aria-hidden="true"></i><span id="estado">ready</span></div>
+  </details>
+
+  <main class="stage">
+    <div class="kpis" id="kpis" aria-live="polite"></div>
+
+    <section class="panel" role="tabpanel" id="panel-map" aria-labelledby="tab-map">
+      <div class="mapa-grid">
+        <div class="tarjeta mapa"><div id="leaflet" role="region" aria-label="Aftershock map"></div></div>
         <div class="lateral">
           <div class="tarjeta">
             <div class="titulo-tarjeta" id="legtitle">MST-kNN clusters</div>
@@ -282,55 +288,52 @@ a:focus-visible,button:focus-visible,input:focus-visible,.nav-item:focus-visible
           </div>
           <div class="tarjeta" id="detail">
             <div class="titulo-tarjeta">Selected event</div>
-            <p class="texto-tarjeta" style="margin:0">Tap a circle on the map to see its date, magnitude, depth and cluster.</p>
+            <p class="texto">Click a circle on the map to inspect its date, magnitude, depth and cluster.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="seccion" id="clusters" aria-labelledby="t-clusters">
-      <h2 class="titulo-seccion" id="t-clusters">Cluster summary</h2>
-      <p>The silhouette is computed with the Haversine distance on the filtered events. Values close to 0 or negative indicate clusters that overlap with a neighbor.</p>
+    <section class="panel" role="tabpanel" id="panel-clusters" aria-labelledby="tab-clusters" hidden>
+      <div class="panel-head"><h2>Cluster summary</h2><p>Silhouette computed with the Haversine distance on the filtered events. Values close to 0 or negative indicate clusters that overlap with a neighbor.</p></div>
       <div class="tarjeta"><div class="tabla-contenedor"><table class="tabla" id="cltable"></table></div></div>
     </section>
 
-    <section class="seccion" id="dynamics" aria-labelledby="t-dyn">
-      <h2 class="titulo-seccion" id="t-dyn">Sequence dynamics</h2>
-      <div class="cuadricula fila-graficos">
-        <div class="tarjeta grafico"><div class="titulo-tarjeta">Omori decay</div><p class="texto-tarjeta" id="omorisub"></p><svg id="omori" viewBox="0 0 560 320" role="img" aria-label="Event rate per day versus days since the mainshock, log-log scale"></svg></div>
-        <div class="tarjeta grafico"><div class="titulo-tarjeta">Gutenberg-Richter</div><p class="texto-tarjeta" id="grsub"></p><svg id="gr" viewBox="0 0 560 320" role="img" aria-label="Cumulative number of events with magnitude greater than or equal to M"></svg></div>
-        <div class="tarjeta grafico"><div class="titulo-tarjeta">Latitude and depth profile</div><p class="texto-tarjeta">Subduction of the Nazca plate concentrates the activity in the first 25 km. The red dotted line marks 10 km, the depth the catalog assigns by default when it could not be estimated.</p><svg id="xsec" viewBox="0 0 560 320" role="img" aria-label="Depth versus latitude"></svg></div>
-        <div class="tarjeta grafico"><div class="titulo-tarjeta">Magnitude over time</div><p class="texto-tarjeta">The horizontal axis uses a logarithmic scale of days, so the first week is not compressed.</p><svg id="mt" viewBox="0 0 560 320" role="img" aria-label="Magnitude versus days since the mainshock"></svg></div>
+    <section class="panel" role="tabpanel" id="panel-sequence" aria-labelledby="tab-sequence" hidden>
+      <div class="panel-head"><h2>Sequence dynamics</h2><p>Every chart follows the parameters on the left.</p></div>
+      <div class="graficos">
+        <div class="tarjeta grafico"><div class="titulo-tarjeta">Omori decay</div><p class="texto" id="omorisub"></p><svg id="omori" viewBox="0 0 560 320" role="img" aria-label="Event rate per day versus days since the mainshock, log-log scale"></svg></div>
+        <div class="tarjeta grafico"><div class="titulo-tarjeta">Gutenberg-Richter</div><p class="texto" id="grsub"></p><svg id="gr" viewBox="0 0 560 320" role="img" aria-label="Cumulative number of events with magnitude greater than or equal to M"></svg></div>
+        <div class="tarjeta grafico"><div class="titulo-tarjeta">Latitude and depth profile</div><p class="texto">Subduction of the Nazca plate concentrates the activity in the first 25 km. The red dotted line marks 10 km, the depth the catalog assigns by default when it could not be estimated.</p><svg id="xsec" viewBox="0 0 560 320" role="img" aria-label="Depth versus latitude"></svg></div>
+        <div class="tarjeta grafico"><div class="titulo-tarjeta">Magnitude over time</div><p class="texto">Logarithmic scale of days, so the first week is not compressed.</p><svg id="mt" viewBox="0 0 560 320" role="img" aria-label="Magnitude versus days since the mainshock"></svg></div>
       </div>
     </section>
 
-    <section class="seccion" id="dbscan" aria-labelledby="t-db">
-      <h2 class="titulo-seccion" id="t-db">Comparison with DBSCAN</h2>
-      <p>DBSCAN runs in your browser on the same filtered events, with the Haversine distance. The adjusted Rand index (ARI) measures how closely it matches the MST-kNN partition: 1 is identical and 0 is what chance would give. Noise points count as a separate cluster.</p>
-      <div class="barra-controles">
-        <div class="control"><label for="eps">Radius ε</label><div class="fila-rango"><input id="eps" type="range" min="3" max="40" step="1" value="12"><span class="valor-rango" id="epsv"></span></div></div>
-        <div class="control"><label for="minpts">Minimum neighbors</label><div class="fila-rango"><input id="minpts" type="range" min="3" max="30" step="1" value="8"><span class="valor-rango" id="minptsv"></span></div></div>
-        <button type="button" class="boton secundario" id="showdb">Show DBSCAN on the map</button>
+    <section class="panel" role="tabpanel" id="panel-dbscan" aria-labelledby="tab-dbscan" hidden>
+      <div class="panel-head"><h2>DBSCAN against MST-kNN</h2><p>DBSCAN runs in your browser on the filtered events with the Haversine distance. Tune ε and the minimum neighbors on the left. The adjusted Rand index (ARI) is 1 for identical partitions and 0 for chance. Noise counts as its own group.</p></div>
+      <div class="kpis" id="dbstats"></div>
+      <div class="tarjeta">
+        <div class="titulo-tarjeta">Contingency table <span style="text-transform:none;letter-spacing:0;font-weight:500">· events per MST-kNN cluster (rows) and DBSCAN cluster (columns)</span>
+          <button type="button" class="boton secundario" id="showdb" style="margin-left:auto">Show DBSCAN on the map</button></div>
+        <div class="tabla-contenedor"><table class="tabla" id="ctable"></table></div>
       </div>
-      <div class="cuadricula kpis" id="dbstats"></div>
     </section>
 
-    <section class="seccion" id="findings" aria-labelledby="t-find">
-      <h2 class="titulo-seccion" id="t-find">What the data show</h2>
-      <div class="cuadricula hallazgos">
+    <section class="panel" role="tabpanel" id="panel-findings" aria-labelledby="tab-findings" hidden>
+      <div class="panel-head"><h2>What the data show</h2></div>
+      <div class="hallazgos">
         <div class="tarjeta"><h3>The catalog starts late</h3><p>The first record is from April 16 at 23:47 local time, almost five hours after the mainshock. The most numerous aftershocks of those hours are missing, and that biases Omori and Gutenberg-Richter.</p></div>
         <div class="tarjeta"><h3>April has no nearest city</h3><p>385 of the 391 events from April 2016 carry <code>nas</code> as the nearest city. The original script drops them before the centrality analysis, right in the most active period.</p></div>
         <div class="tarjeta"><h3>Fixed depth of 10 km</h3><p>266 events have exactly 10 km, the default value of the network. They should be flagged or excluded in any analysis that relies on depth.</p></div>
         <div class="tarjeta"><h3>Two weak clusters</h3><p>Cluster 3 has a silhouette close to zero and cluster 5 is negative. They look more like fragments of their neighbors than like seismic zones of their own.</p></div>
       </div>
     </section>
-
-    <footer class="pie">
-      <p>Jorge Parraga-Alava, Ph.D · <a href="https://doi.org/10.1109/SCCC.2018.8705248">https://doi.org/10.1109/SCCC.2018.8705248</a></p>
-    </footer>
   </main>
 </div>
-<a class="ir-arriba" href="#top" id="arriba" hidden aria-label="Back to top">↑ Top</a>
+
+<footer class="pie">
+  <span>Jorge Parraga-Alava, Ph.D</span><span aria-hidden="true">·</span><a href="https://doi.org/10.1109/SCCC.2018.8705248">https://doi.org/10.1109/SCCC.2018.8705248</a>
+</footer>
 <div id="tip" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -344,7 +347,8 @@ const D=window.QUAKES, MS=D.mainshock;
 const EV=D.events.map(a=>({t:(a[0]-MS.tmin)/1440,tmin:a[0],mag:a[1],depth:a[2],lat:a[3],lon:a[4],region:a[5],city:a[6],cl:a[7],row:a[8]}));
 const MAXDAY=Math.ceil(Math.max(...EV.map(e=>e.t)));
 const NCL=5;
-const state={scope:"study",color:"cluster",clusters:new Set([1,2,3,4,5,0]),magMin:2,depMax:200,s:1000,eps:12,minpts:8,sel:null};
+const DEFAULTS={scope:"study",color:"cluster",magMin:2,depMax:200,s:1000,eps:12,minpts:8};
+const state={...DEFAULTS,clusters:new Set([1,2,3,4,5,0]),sel:null,tab:"map"};
 const fmt=(v,d=1)=>v==null||!isFinite(v)?"—":v.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const dateStr=(tmin,withTime)=>{const d=new Date((tmin-300)*60000);const s=`${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;return withTime?`${s}, ${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")}`:s};
@@ -352,14 +356,12 @@ const dayFromS=s=>Math.expm1(s/1000*Math.log1p(MAXDAY));
 const dayLabel=d=>d<1?`${fmt(d*24,0)} h`:d<60?`${fmt(d,d<10?1:0)} days`:`${fmt(d/30.44,0)} months`;
 
 /* ---------- colors from tokens ---------- */
-let C={};
-function readColors(){const cs=getComputedStyle(document.documentElement);const g=n=>cs.getPropertyValue(n).trim();
-  C={cl:[g("--c0"),g("--c1"),g("--c2"),g("--c3"),g("--c4"),g("--c5")],seq:[g("--s1"),g("--s2"),g("--s3"),g("--s4"),g("--s5")],
-     ink:g("--texto"),ink2:g("--texto2"),muted:g("--texto3"),line:g("--borde"),accent:g("--rojo"),gold:g("--y-tinta"),green:g("--g2"),surface:g("--superficie"),land:g("--land"),landAlt:g("--land-alt"),border:g("--border")};}
-readColors();
+const cs=getComputedStyle(document.documentElement),tok=n=>cs.getPropertyValue(n).trim();
+const C={cl:["--c0","--c1","--c2","--c3","--c4","--c5"].map(tok),seq:["--s1","--s2","--s3","--s4","--s5"].map(tok),
+  ink:tok("--texto"),ink2:tok("--texto2"),accent:tok("--rojo"),gold:tok("--y-tinta"),green:tok("--g2"),surface:tok("--superficie"),land:tok("--land"),landAlt:tok("--land-alt"),border:tok("--border")};
 function hex2rgb(h){h=h.replace("#","");return[0,2,4].map(i=>parseInt(h.substr(i,2),16))}
 function seqColor(u){u=Math.max(0,Math.min(1,u));const n=C.seq.length-1,i=Math.min(n-1,Math.floor(u*n)),f=u*n-i;const a=hex2rgb(C.seq[i]),b=hex2rgb(C.seq[i+1]);return`rgb(${a.map((v,k)=>Math.round(v+(b[k]-v)*f)).join(",")})`}
-let dbLabels=new Map(), dbColorIdx=new Map();
+let dbLabels=new Map(), dbColorIdx=new Map(), dbK=0;
 function colorOf(e){
   switch(state.color){
     case "depth": return e.depth==null?C.cl[0]:seqColor(Math.log1p(Math.min(e.depth,200))/Math.log1p(200));
@@ -399,13 +401,13 @@ function ari(a,b){const n=a.length;if(n<2)return null;const ct=new Map(),ra=new 
   const c2=x=>x*(x-1)/2;let s=0,sa=0,sb=0;ct.forEach(v=>s+=c2(v));ra.forEach(v=>sa+=c2(v));rb.forEach(v=>sb+=c2(v));const exp=sa*sb/c2(n),mx=(sa+sb)/2;return mx===exp?1:(s-exp)/(mx-exp)}
 
 /* ---------- map ---------- */
-const map=L.map("map",{preferCanvas:true,zoomSnap:0.25,attributionControl:true,minZoom:5,maxZoom:12}).setView([-0.25,-80.0],7.5);
+const map=L.map("leaflet",{preferCanvas:true,zoomSnap:0.25,attributionControl:true,minZoom:5,maxZoom:12}).setView([-0.25,-80.0],7.5);
 map.attributionControl.setPrefix(false).addAttribution("geoBoundaries · Natural Earth · IG-EPN");
 L.control.scale({imperial:false,position:"bottomleft"}).addTo(map);
 map.createPane("basemap").style.zIndex=300;
 map.createPane("events").style.zIndex=450;
 const canvas=L.canvas({padding:0.3,pane:"events"});
-L.geoJSON(window.BASEMAP,{interactive:false,pane:"basemap",renderer:L.svg({pane:"basemap"}),style:f=>({color:C.border,weight:f.properties.kind==="province"?0.7:1,fillColor:f.properties.kind==="province"?C.land:C.landAlt,fillOpacity:1})}).addTo(map).bringToBack();
+L.geoJSON(window.BASEMAP,{interactive:false,pane:"basemap",renderer:L.svg({pane:"basemap"}),style:f=>({color:C.border,weight:f.properties.kind==="province"?0.7:1,fillColor:f.properties.kind==="province"?C.land:C.landAlt,fillOpacity:1})}).addTo(map);
 const PLACES=[["Esmeraldas",0.968,-79.652],["Muisne",0.611,-80.019],["Pedernales",0.071,-80.052],["Jama",-0.200,-80.267],["Bahía de Caráquez",-0.598,-80.424],["Manta",-0.967,-80.709],["Portoviejo",-1.055,-80.454],["Puerto López",-1.559,-80.811],["Quito",-0.180,-78.467],["Guayaquil",-2.170,-79.922],["Santo Domingo",-0.253,-79.172]];
 PLACES.forEach(([n,la,lo])=>{L.circleMarker([la,lo],{radius:2.5,color:"transparent",fillOpacity:0,interactive:false,pane:"basemap",renderer:L.svg({pane:"basemap"})}).bindTooltip(n,{permanent:true,direction:"right",className:"lugar",offset:[4,0]}).addTo(map)});
 const epiIcon=L.divIcon({className:"epi",iconSize:[26,26],iconAnchor:[13,13],html:`<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 1.5l3.1 7.4 8 .6-6.1 5.2 1.9 7.8L13 18.3l-6.9 4.2 1.9-7.8L1.9 9.5l8-.6z" fill="${C.accent}" stroke="#fff" stroke-width="1.6"/></svg>`});
@@ -424,7 +426,7 @@ function drawMap(ev){eventLayer.clearLayers();labelLayer.clearLayers();const day
 }
 
 /* ---------- legend and detail ---------- */
-const filaLey=(color,txt,n)=>`<div class="fila"><i style="background:${color}"></i><span>${txt}</span>${n==null?"":`<span class="n">${n}</span>`}</div>`;
+const filaLey=(color,txt,n)=>`<div class="f"><i style="background:${color}"></i><span>${txt}</span>${n==null?"":`<span class="n">${n}</span>`}</div>`;
 function renderLegend(ev){const lg=$("#legend"),t=$("#legtitle");let h="";
   if(state.color==="cluster"){t.textContent="MST-kNN clusters";for(let k=1;k<=NCL;k++)h+=filaLey(C.cl[k],`Cluster ${k}`,ev.filter(e=>e.cl===k).length);
     if(state.scope==="all")h+=filaLey(C.cl[0],"Outside the study area",ev.filter(e=>!e.cl).length)}
@@ -434,20 +436,20 @@ function renderLegend(ev){const lg=$("#legend"),t=$("#legtitle");let h="";
   else if(state.color==="depth"){t.textContent="Depth (km)";h=`<div class="rampa"></div><div class="rampa-etq"><span>0</span><span>10</span><span>50</span><span>200</span></div>`}
   else{t.textContent="Days since the mainshock";h=`<div class="rampa"></div><div class="rampa-etq"><span>0</span><span>5</span><span>30</span><span>${MAXDAY}</span></div>`}
   lg.innerHTML=h;
-  $("#sizes").innerHTML=[3,4,5,6].map(m=>{const r=radius(m);return`<div><span class="punto-m" style="width:${2*r}px;height:${2*r}px"></span>M${m}</div>`}).join("");}
+  $("#sizes").innerHTML=[3,4,5,6].map(m=>{const r=radius(m);return`<div><span style="width:${2*r}px;height:${2*r}px"></span>M${m}</div>`}).join("");}
 function renderDetail(){const e=state.sel,el=$("#detail");if(!e)return;
-  el.innerHTML=`<div class="titulo-tarjeta">Selected event ${e.cl?`<span class="insignia q1">G${e.cl}</span>`:""}</div><dl class="detalle">
+  el.innerHTML=`<div class="titulo-tarjeta">Selected event ${e.cl?`<span class="insignia q1" style="margin:0">G${e.cl}</span>`:""}</div><dl class="detalle">
   <dt>Local date</dt><dd>${dateStr(e.tmin,true)}</dd><dt>After mainshock</dt><dd>${dayLabel(e.t)}</dd>
-  <dt>Magnitude</dt><dd>${fmt(e.mag,2)}</dd><dt>Depth</dt><dd>${e.depth==null?"no data":fmt(e.depth)+" km"}${e.depth===10?' <span class="insignia oa">default value</span>':""}</dd>
+  <dt>Magnitude</dt><dd>${fmt(e.mag,2)}</dd><dt>Depth</dt><dd>${e.depth==null?"no data":fmt(e.depth)+" km"}${e.depth===10?'<span class="insignia oa">default value</span>':""}</dd>
   <dt>Coordinates</dt><dd>${fmt(Math.abs(e.lat),2)}° ${e.lat>=0?"N":"S"}, ${fmt(Math.abs(e.lon),2)}° W</dd><dt>To epicenter</dt><dd>${fmt(hav(e,MS),0)} km</dd>
   <dt>Region</dt><dd>${e.region}</dd><dt>Nearest city</dt><dd>${e.city||'<span style="color:var(--texto3)">nas</span>'}</dd>
   <dt>MST-kNN cluster</dt><dd>${e.cl?"G"+e.cl:"outside the study"}</dd><dt>Row in sismos.csv</dt><dd>${e.row+1}</dd></dl>`}
 
 /* ---------- indicators ---------- */
-const kpi=(v,l)=>`<div class="tarjeta"><div class="kpi-valor">${v}</div><div class="kpi-etiqueta">${l}</div></div>`;
+const kpi=(v,l)=>`<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
 function renderKpis(ev){const bv=bValue(ev.map(e=>e.mag)),om=omori(ev.map(e=>e.t));const mx=ev.reduce((a,e)=>e.mag>a?e.mag:a,0);
-  $("#kpis").innerHTML=kpi(ev.length.toLocaleString("en-US"),"Visible events")+kpi(ev.length?fmt(mx):"—","Maximum magnitude")+kpi(fmt(median(ev.filter(e=>e.depth!=null).map(e=>e.depth))),"Median depth (km)")+
-    kpi(bv?fmt(bv.b,2):"—","b-value")+kpi(om&&om.p?fmt(om.p,2):"—","Omori p exponent")}
+  $("#kpis").innerHTML=kpi(ev.length.toLocaleString("en-US"),"Visible events")+kpi(ev.length?fmt(mx):"—","Max magnitude")+kpi(fmt(median(ev.filter(e=>e.depth!=null).map(e=>e.depth))),"Median depth (km)")+
+    kpi(bv?fmt(bv.b,2):"—","b-value")+kpi(om&&om.p?fmt(om.p,2):"—","Omori p")}
 
 /* ---------- SVG charts ---------- */
 const NS="http://www.w3.org/2000/svg";
@@ -513,47 +515,71 @@ function renderTable(ev){const st=ev.filter(e=>e.cl);const sil=silhouette(st);
   let h=`<thead><tr><th>Cluster</th><th class="num">Events</th><th class="num">Max M</th><th class="num">Median M</th><th class="num">Median depth</th><th>Center</th><th class="num">To epicenter</th><th>First event</th><th class="num">Silhouette</th></tr></thead><tbody>`;
   for(let k=1;k<=NCL;k++){const g=st.filter(e=>e.cl===k);if(!g.length)continue;const la=median(g.map(e=>e.lat)),lo=median(g.map(e=>e.lon));const s=sil.get(k);
     const first=g.reduce((a,e)=>e.tmin<a.tmin?e:a);
-    const tag=s==null?"":s<0.1?' <span class="insignia q4">weak</span>':s>0.5?' <span class="insignia q1">well separated</span>':"";
+    const tag=s==null?"":s<0.1?'<span class="insignia q4">weak</span>':s>0.5?'<span class="insignia q1">well separated</span>':"";
     h+=`<tr><td><span class="mancha" style="background:${C.cl[k]}"></span><b>G${k}</b></td><td class="num">${g.length}</td><td class="num">${fmt(Math.max(...g.map(e=>e.mag)))}</td><td class="num">${fmt(median(g.map(e=>e.mag)))}</td><td class="num">${fmt(median(g.map(e=>e.depth)))} km</td>
-    <td>${fmt(Math.abs(la),2)}° ${la>=0?"N":"S"}, ${fmt(Math.abs(lo),2)}° W</td><td class="num">${fmt(hav({lat:la,lon:lo},MS),0)} km</td><td>${dateStr(first.tmin)}</td>
+    <td class="mono" style="font-size:var(--fs-sm)">${fmt(Math.abs(la),2)}° ${la>=0?"N":"S"}, ${fmt(Math.abs(lo),2)}° W</td><td class="num">${fmt(hav({lat:la,lon:lo},MS),0)} km</td><td class="mono" style="font-size:var(--fs-sm)">${dateStr(first.tmin)}</td>
     <td class="num">${s==null?"—":fmt(s,2)}${tag}</td></tr>`}
   $("#cltable").innerHTML=h+"</tbody>"}
 
 /* ---------- DBSCAN ---------- */
-function runDb(ev){const{lab,k}=dbscan(ev,state.eps,state.minpts);dbLabels=new Map();ev.forEach((e,i)=>dbLabels.set(e.row,lab[i]));
+function runDb(ev){const{lab,k}=dbscan(ev,state.eps,state.minpts);dbK=k;dbLabels=new Map();ev.forEach((e,i)=>dbLabels.set(e.row,lab[i]));
   const sizes=new Map();lab.forEach(l=>{if(l>=0)sizes.set(l,(sizes.get(l)||0)+1)});const order=[...sizes.entries()].sort((a,b)=>b[1]-a[1]);dbColorIdx=new Map();order.forEach(([l],i)=>dbColorIdx.set(l,i<NCL?i+1:0));
   const both=ev.filter(e=>e.cl);const a=ari(both.map(e=>e.cl),both.map(e=>dbLabels.get(e.row)));const noise=[...lab].filter(l=>l<0).length;
-  $("#dbstats").innerHTML=kpi(k,"Clusters found")+kpi(ev.length?fmt(100*noise/ev.length,0)+"%":"—","Events as noise")+kpi(a==null?"—":fmt(a,2),"ARI against MST-kNN")+kpi(order.length?order[0][1]:"—","Events in the largest cluster")}
+  $("#dbstats").innerHTML=kpi(k,"Clusters found")+kpi(ev.length?fmt(100*noise/ev.length,0)+"%":"—","Events as noise")+kpi(a==null?"—":fmt(a,2),"ARI vs MST-kNN")+kpi(order.length?order[0][1]:"—","Largest cluster")+kpi(`${state.eps} km · ${state.minpts}`,"Radius · min neighbors");
+  /* contingency table: MST-kNN rows, DBSCAN columns (largest five, other, noise) */
+  const cols=order.slice(0,NCL).map(([l],i)=>({key:l,name:`D${i+1}`,color:C.cl[i+1]}));
+  if(order.length>NCL)cols.push({key:"o",name:"Other",color:C.ink2});cols.push({key:-1,name:"Noise",color:C.cl[0]});
+  const colOf=l=>l<0?-1:(dbColorIdx.get(l)?l:"o");
+  let h=`<thead><tr><th>MST-kNN</th>${cols.map(c=>`<th class="num"><span class="mancha" style="background:${c.color};margin-right:6px"></span>${c.name}</th>`).join("")}<th class="num">Total</th></tr></thead><tbody>`;
+  for(let k2=1;k2<=NCL;k2++){const g=both.filter(e=>e.cl===k2);if(!g.length)continue;const cnt=new Map();g.forEach(e=>{const c=colOf(dbLabels.get(e.row));cnt.set(c,(cnt.get(c)||0)+1)});const mx=Math.max(...cnt.values());
+    h+=`<tr><td><span class="mancha" style="background:${C.cl[k2]}"></span><b>G${k2}</b></td>${cols.map(c=>{const v=cnt.get(c.key)||0;return`<td class="num ${v===0?"cero":v===mx?"alto":""}">${v}</td>`}).join("")}<td class="num"><b>${g.length}</b></td></tr>`}
+  $("#ctable").innerHTML=h+"</tbody>"}
 
 /* ---------- render ---------- */
 let pending=0;
-function render(){cancelAnimationFrame(pending);pending=requestAnimationFrame(()=>{const ev=filtered();runDb(ev);renderKpis(ev);drawMap(ev);renderLegend(ev);renderTable(ev);chartOmori(ev);chartGR(ev);chartXsec(ev);chartMT(ev);
-  $("#magminv").textContent=`M ≥ ${fmt(state.magMin)}`;$("#depmaxv").textContent=state.depMax>=200?"all":`≤ ${state.depMax} km`;const d=dayFromS(state.s);$("#timev").textContent=state.s>=1000?`full catalog (${dayLabel(MAXDAY)})`:`up to ${dayLabel(d)} · ${dateStr(MS.tmin+d*1440)}`;
-  $("#epsv").textContent=`${state.eps} km`;$("#minptsv").textContent=state.minpts;})}
+function render(){cancelAnimationFrame(pending);pending=requestAnimationFrame(()=>{const t0=performance.now();const ev=filtered();const needDb=state.color==="dbscan"||state.tab==="dbscan";if(needDb)runDb(ev);renderKpis(ev);drawMap(ev);renderLegend(ev);
+  if(state.tab==="clusters")renderTable(ev);if(state.tab==="sequence"){chartOmori(ev);chartGR(ev);chartXsec(ev);chartMT(ev)}
+  $("#magminv").textContent=`≥ ${fmt(state.magMin)}`;$("#depmaxv").textContent=state.depMax>=200?"all":`≤ ${state.depMax} km`;const d=dayFromS(state.s);$("#timev").textContent=state.s>=1000?`all (${dayLabel(MAXDAY)})`:`≤ ${dayLabel(d)}`;
+  $("#epsv").textContent=`${state.eps} km`;$("#minptsv").textContent=state.minpts;
+  $("#estado").textContent=`${ev.length} events`+(needDb?` · ${dbK} DBSCAN clusters`:"")+` · ${Math.max(1,Math.round(performance.now()-t0))} ms`+(state.s<1000?` · ${dateStr(MS.tmin+d*1440)}`:"");})}
+
+/* ---------- tabs ---------- */
+const TABS=["map","clusters","sequence","dbscan","findings"];
+function showTab(name,focus){if(!TABS.includes(name))name="map";state.tab=name;
+  TABS.forEach(t=>{const b=$("#tab-"+t),p=$("#panel-"+t),on=t===name;b.setAttribute("aria-selected",String(on));b.tabIndex=on?0:-1;p.hidden=!on});
+  if(focus)$("#tab-"+name).focus();
+  if(name==="map")setTimeout(()=>map.invalidateSize(),0);
+  if(typeof render==="function"&&ready)render();
+  try{history.replaceState(null,"","#"+name)}catch(_){}}
+$("#tabs").addEventListener("click",ev=>{const b=ev.target.closest("[role=tab]");if(b)showTab(b.dataset.tab)});
+$("#tabs").addEventListener("keydown",ev=>{const i=TABS.indexOf(state.tab);if(ev.key==="ArrowRight")showTab(TABS[(i+1)%TABS.length],true);else if(ev.key==="ArrowLeft")showTab(TABS[(i+TABS.length-1)%TABS.length],true);else return;ev.preventDefault()});
+document.addEventListener("keydown",ev=>{if(ev.target.closest("input,textarea")||ev.metaKey||ev.ctrlKey||ev.altKey)return;const n=+ev.key;if(n>=1&&n<=TABS.length)showTab(TABS[n-1])});
+let ready=false;
+showTab((location.hash||"#map").slice(1));
 
 /* ---------- controls ---------- */
-function seg(id,key){const box=$(id);box.addEventListener("click",ev=>{const b=ev.target.closest("button");if(!b)return;state[key]=b.dataset.v;box.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));render()})}
+function setPressed(box,v){box.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.v===v)))}
+function seg(id,key){const box=$(id);box.addEventListener("click",ev=>{const b=ev.target.closest("button");if(!b)return;state[key]=b.dataset.v;setPressed(box,b.dataset.v);render()})}
 seg("#scope","scope");seg("#colorby","color");
-$("#chips").innerHTML=[1,2,3,4,5,0].map(k=>`<button type="button" class="insignia" data-k="${k}" aria-pressed="true" style="--sw:${C.cl[k]}"><i></i>${k?"G"+k:"Outside"}</button>`).join("");
+$("#chips").innerHTML=[1,2,3,4,5,0].map(k=>`<button type="button" class="chip" data-k="${k}" aria-pressed="true" style="--sw:${C.cl[k]}"><i></i>${k?"G"+k:"Outside"}</button>`).join("");
 $("#chips").addEventListener("click",ev=>{const b=ev.target.closest("button");if(!b)return;const k=+b.dataset.k;state.clusters.has(k)?state.clusters.delete(k):state.clusters.add(k);b.setAttribute("aria-pressed",String(state.clusters.has(k)));render()});
-const bind=(id,key)=>$(id).addEventListener("input",ev=>{state[key]=+ev.target.value;render()});
-bind("#magmin","magMin");bind("#depmax","depMax");bind("#time","s");bind("#eps","eps");bind("#minpts","minpts");
-$("#showdb").addEventListener("click",()=>{state.color="dbscan";document.querySelectorAll("#colorby button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.v==="dbscan")));render();$("#map-view").scrollIntoView({behavior:"smooth",block:"start"})});
+const SLIDERS={magmin:"magMin",depmax:"depMax",time:"s",eps:"eps",minpts:"minpts"};
+Object.entries(SLIDERS).forEach(([id,key])=>$("#"+id).addEventListener("input",ev=>{state[key]=+ev.target.value;render()}));
+$("#showdb").addEventListener("click",()=>{state.color="dbscan";setPressed($("#colorby"),"dbscan");render();showTab("map")});
 let timer=null;const playBtn=$("#play");
 function stop(){clearInterval(timer);timer=null;playBtn.textContent="▶ Play";playBtn.setAttribute("aria-label","Play sequence")}
 playBtn.addEventListener("click",()=>{if(timer){stop();return}if(state.s>=1000)state.s=0;playBtn.textContent="❚❚ Pause";playBtn.setAttribute("aria-label","Pause sequence");
   timer=setInterval(()=>{state.s=Math.min(1000,state.s+6);$("#time").value=state.s;render();if(state.s>=1000)stop()},90)});
+$("#reset").addEventListener("click",ev=>{ev.preventDefault();ev.stopPropagation();stop();Object.assign(state,DEFAULTS);state.clusters=new Set([1,2,3,4,5,0]);
+  Object.entries(SLIDERS).forEach(([id,key])=>{$("#"+id).value=state[key]});setPressed($("#scope"),state.scope);setPressed($("#colorby"),state.color);
+  document.querySelectorAll("#chips button").forEach(b=>b.setAttribute("aria-pressed","true"));render()});
 
-/* ---------- sidebar ---------- */
-const sb=$("#sidebar"),ov=$("#overlay"),mb=$("#menu");
-function menu(open){sb.classList.toggle("abierto",open);ov.hidden=!open;mb.setAttribute("aria-expanded",String(open))}
-mb.addEventListener("click",()=>menu(!sb.classList.contains("abierto")));ov.addEventListener("click",()=>menu(false));
-document.querySelectorAll("#nav a").forEach(a=>a.addEventListener("click",()=>menu(false)));
-const links=[...document.querySelectorAll("#nav a")];
-try{const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)links.forEach(a=>a.classList.toggle("activo",a.getAttribute("href")==="#"+e.target.id))})},{rootMargin:"-30% 0px -60% 0px"});
-  ["map-view","clusters","dynamics","dbscan","findings"].forEach(id=>io.observe(document.getElementById(id)))}catch(_){}
-const up=$("#arriba");addEventListener("scroll",()=>{up.hidden=scrollY<600},{passive:true});
+/* parameters panel: always open on wide screens, collapsible on narrow ones */
+const params=$("#params"),wide=matchMedia("(min-width:901px)");
+const syncParams=()=>{if(wide.matches)params.open=true};params.open=wide.matches;
+try{wide.addEventListener("change",syncParams)}catch(_){}
+params.querySelector("summary").addEventListener("click",ev=>{if(wide.matches)ev.preventDefault()});
 
-render();
+ready=true;render();
 })();
 </script>
