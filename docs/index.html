@@ -228,7 +228,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,.nav-item:focus-visible
       <a class="nav-item" href="#findings"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a4.5 4.5 0 00-2.5 8.2V12h5V9.7A4.5 4.5 0 008 1.5zM6 14h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Findings</a>
     </nav>
     <div class="sidebar-pie">
-      J. Párraga-Álava, G. Molina, R. Alcívar and M. Inostroza-Ponta.<br>
+      J. Parraga-Alava, Ph.D.<br>
       Data: IG-EPN, April 2016 to May 2018.<br>
       <a href="https://github.com/jorgeklz/paper-earthquake-clustering">Code on GitHub</a>
     </div>
@@ -402,10 +402,12 @@ function ari(a,b){const n=a.length;if(n<2)return null;const ct=new Map(),ra=new 
 const map=L.map("map",{preferCanvas:true,zoomSnap:0.25,attributionControl:true,minZoom:5,maxZoom:12}).setView([-0.25,-80.0],7.5);
 map.attributionControl.setPrefix(false).addAttribution("geoBoundaries · Natural Earth · IG-EPN");
 L.control.scale({imperial:false,position:"bottomleft"}).addTo(map);
-const canvas=L.canvas({padding:0.3});
-L.geoJSON(window.BASEMAP,{interactive:false,renderer:L.svg(),style:f=>({color:C.border,weight:f.properties.kind==="province"?0.7:1,fillColor:f.properties.kind==="province"?C.land:C.landAlt,fillOpacity:1})}).addTo(map).bringToBack();
+map.createPane("basemap").style.zIndex=300;
+map.createPane("events").style.zIndex=450;
+const canvas=L.canvas({padding:0.3,pane:"events"});
+L.geoJSON(window.BASEMAP,{interactive:false,pane:"basemap",renderer:L.svg({pane:"basemap"}),style:f=>({color:C.border,weight:f.properties.kind==="province"?0.7:1,fillColor:f.properties.kind==="province"?C.land:C.landAlt,fillOpacity:1})}).addTo(map).bringToBack();
 const PLACES=[["Esmeraldas",0.968,-79.652],["Muisne",0.611,-80.019],["Pedernales",0.071,-80.052],["Jama",-0.200,-80.267],["Bahía de Caráquez",-0.598,-80.424],["Manta",-0.967,-80.709],["Portoviejo",-1.055,-80.454],["Puerto López",-1.559,-80.811],["Quito",-0.180,-78.467],["Guayaquil",-2.170,-79.922],["Santo Domingo",-0.253,-79.172]];
-PLACES.forEach(([n,la,lo])=>{L.circleMarker([la,lo],{radius:2.5,color:"transparent",fillOpacity:0,interactive:false,renderer:L.svg()}).bindTooltip(n,{permanent:true,direction:"right",className:"lugar",offset:[4,0]}).addTo(map)});
+PLACES.forEach(([n,la,lo])=>{L.circleMarker([la,lo],{radius:2.5,color:"transparent",fillOpacity:0,interactive:false,pane:"basemap",renderer:L.svg({pane:"basemap"})}).bindTooltip(n,{permanent:true,direction:"right",className:"lugar",offset:[4,0]}).addTo(map)});
 const epiIcon=L.divIcon({className:"epi",iconSize:[26,26],iconAnchor:[13,13],html:`<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 1.5l3.1 7.4 8 .6-6.1 5.2 1.9 7.8L13 18.3l-6.9 4.2 1.9-7.8L1.9 9.5l8-.6z" fill="${C.accent}" stroke="#fff" stroke-width="1.6"/></svg>`});
 L.marker([MS.lat,MS.lon],{icon:epiIcon,zIndexOffset:1000,keyboard:false}).bindTooltip(`Mainshock · Mw 7.8<br>16 Apr 2016, 18:58 · ${fmt(MS.depth)} km`,{direction:"top",offset:[0,-10]}).addTo(map);
 const eventLayer=L.layerGroup().addTo(map), labelLayer=L.layerGroup().addTo(map);
